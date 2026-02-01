@@ -1,10 +1,17 @@
-#include "../../include/uart.h"
-#include "../../include/timer.h"
+// ======================================================================================
+//  AXON RTOS - KERNEL MAIN
+// ======================================================================================
+//  Adaptado para a nova Hardware Abstraction Layer (HAL)
+// ======================================================================================
+
+#include "../../include/hal_uart.h"
+#include "../../include/hal_timer.h"
+#include "../../include/hal_irq.h"
+#include "../../include/hal_plic.h" 
 
 // ======================================================================================
-//  DEFINIÇÕES DE CORES ANSI (Terminal Style)
+//  DEFINIÇÕES DE CORES ANSI
 // ======================================================================================
-
 #define ANSI_RESET  "\033[0m"
 #define ANSI_CYAN   "\033[36m"
 #define ANSI_GREEN  "\033[32m"
@@ -13,73 +20,88 @@
 #define ANSI_BOLD   "\033[1m"
 
 // ======================================================================================
-//  FUNÇÕES AUXILIARES DE LOG
+//  FUNÇÕES AUXILIARES DE LOG (Usando hal_uart)
 // ======================================================================================
 
 void log_info(const char* msg) {
-    uart_puts(ANSI_CYAN "[ INFO ] " ANSI_RESET);
-    uart_puts(msg);
-    uart_puts("\n\r");
+    hal_uart_puts(ANSI_CYAN "[ INFO ] " ANSI_RESET);
+    hal_uart_puts(msg);
+    hal_uart_puts("\n\r");
 }
 
 void log_ok(const char* msg) {
-    uart_puts(ANSI_GREEN "[  OK  ] " ANSI_RESET);
-    uart_puts(msg);
-    uart_puts("\n\r");
+    hal_uart_puts(ANSI_GREEN "[  OK  ] " ANSI_RESET);
+    hal_uart_puts(msg);
+    hal_uart_puts("\n\r");
 }
 
 void log_warn(const char* msg) {
-    uart_puts(ANSI_YELLOW "[ WARN ] " ANSI_RESET);
-    uart_puts(msg);
-    uart_puts("\n\r");
+    hal_uart_puts(ANSI_YELLOW "[ WARN ] " ANSI_RESET);
+    hal_uart_puts(msg);
+    hal_uart_puts("\n\r");
 }
 
 void print_hex(unsigned int val) {
     char hex_chars[] = "0123456789ABCDEF";
-    uart_puts("0x");
+    hal_uart_puts("0x");
     for (int i = 28; i >= 0; i -= 4) {
-        uart_putc(hex_chars[(val >> i) & 0xF]);
+        hal_uart_putc(hex_chars[(val >> i) & 0xF]);
     }
 }
 
 // ======================================================================================
-//  TRATAMENTO DE INTERRUPÇÕES
+//  TRATAMENTO DE INTERRUPÇÕES (Compatível com trap.s)
 // ======================================================================================
 
 // Definido no trap.s
 extern void trap_entry();
 
-// Gerenciador de interrupções
+// Intervalo do Timer: 100ms (assumindo clock de 10MHz no QEMU/FPGA simples)
+// Ajuste conforme seu clock real. Se for 100MHz, use 10000000.
+#define TICK_DELTA_CYCLES 1000000 
+
+// Handler C chamado pelo assembly trap.s
 void trap_handler(unsigned int mcause, unsigned int mepc) {
 
     int is_interrupt = (mcause >> 31);
     int cause_code = mcause & 0x7FFFFFFF;
 
     if (is_interrupt) {
-        if (cause_code == 7) { 
-            
-            // Machine Timer Interrupt
-            timer_handler();
+        switch (cause_code) {
+            case 7: // Machine Timer Interrupt
+                hal_uart_puts("."); // Print discreto para não floodar
+                
+                // Re-programar o próximo tick usando a nova API inline
+                hal_timer_set_irq_delta(TICK_DELTA_CYCLES);
+                break;
 
-        } else {
+            case 11: // Machine External Interrupt (PLIC)
+                // Se estiver usando o irq_dispatch, chamaria ele aqui.
+                // Por enquanto, apenas avisamos e limpamos.
+                {
+                    uint32_t source = hal_plic_claim();
+                    if (source) {
+                        hal_uart_puts("[IRQ EXT]");
+                        hal_plic_complete(source);
+                    }
+                }
+                break;
 
-            uart_puts(ANSI_RED "\n\r[FAIL] Unknown Interrupt: ");
-            print_hex(cause_code);
-            uart_puts("\n\r" ANSI_RESET);
-
+            default:
+                hal_uart_puts(ANSI_RED "\n\r[FAIL] Unknown Interrupt: ");
+                print_hex(cause_code);
+                hal_uart_puts("\n\r" ANSI_RESET);
+                break;
         }
 
     } else {
-
-        // TRAP SÍNCRONA (EXCEÇÃO)
-        uart_puts(ANSI_RED "\n\r[CRIT] EXCEPTION DETECTED!\n\r");
-        uart_puts("   > MCAUSE: "); print_hex(mcause); uart_puts(" (Cause)\n\r");
-        uart_puts("   > MEPC:   "); print_hex(mepc);   uart_puts(" (Address)\n\r");
-        uart_puts("System Halted." ANSI_RESET);
+        // EXCEÇÃO SÍNCRONA (CRASH)
+        hal_uart_puts(ANSI_RED "\n\r[CRIT] EXCEPTION DETECTED!\n\r");
+        hal_uart_puts("   > MCAUSE: "); print_hex(mcause); hal_uart_puts(" (Cause)\n\r");
+        hal_uart_puts("   > MEPC:   "); print_hex(mepc);   hal_uart_puts(" (Address)\n\r");
+        hal_uart_puts("System Halted." ANSI_RESET);
         while(1);
-
     }
-
 }
 
 // ======================================================================================
@@ -87,68 +109,57 @@ void trap_handler(unsigned int mcause, unsigned int mepc) {
 // ======================================================================================
 
 void kernel_main() {
-
-    uart_init();
+    // 1. Inicializar Hardware (UART)
+    hal_uart_init();
     
-    // Limpar tela e posicionar cursor no topo
-    uart_puts("\033[2J\033[H");
+    // Limpar tela
+    hal_uart_puts("\033[2J\033[H");
 
     // 1. ASCII ART BANNER
-    uart_puts(ANSI_CYAN ANSI_BOLD);
-    uart_puts("\n\r");
-    uart_puts(" █████╗ ██╗  ██╗ ██████╗ ███╗   ██╗       ██████╗ ███████╗\n\r");
-    uart_puts("██╔══██╗╚██╗██╔╝██╔═══██╗████╗  ██║      ██╔═══██╗██╔════╝\n\r");
-    uart_puts("███████║ ╚███╔╝ ██║   ██║██╔██╗ ██║█████╗██║   ██║███████╗\n\r");
-    uart_puts("██╔══██║ ██╔██╗ ██║   ██║██║╚██╗██║╚════╝██║   ██║╚════██║\n\r");
-    uart_puts("██║  ██║██╔╝ ██╗╚██████╔╝██║ ╚████║      ╚██████╔╝███████║\n\r");
-    uart_puts("╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝       ╚═════╝ ╚══════╝\n\r");   
-    uart_puts("\n\r");
-    uart_puts(ANSI_RESET);
-    uart_puts("   :: AXON RTOS :: (v0.1.0-alpha) \n\r");
-    uart_puts("   :: Build: RISC-V 32-bit (RV32I_Zicsr) \n\r");
-    uart_puts("\n\r");
+    hal_uart_puts(ANSI_CYAN ANSI_BOLD);
+    hal_uart_puts("\n\r");
+    hal_uart_puts("   █████╗ ██╗  ██╗ ██████╗ ███╗   ██╗       ██████╗ ███████╗\n\r");
+    hal_uart_puts("  ██╔══██╗╚██╗██╔╝██╔═══██╗████╗  ██║      ██╔═══██╗██╔════╝\n\r");
+    hal_uart_puts("  ███████║ ╚███╔╝ ██║   ██║██╔██╗ ██║█████╗██║   ██║███████╗\n\r");
+    hal_uart_puts("  ██╔══██║ ██╔██╗ ██║   ██║██║╚██╗██║╚════╝██║   ██║╚════██║\n\r");
+    hal_uart_puts("  ██║  ██║██╔╝ ██╗╚██████╔╝██║ ╚████║      ╚██████╔╝███████║\n\r");
+    hal_uart_puts("  ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝       ╚═════╝ ╚══════╝\n\r");   
+    hal_uart_puts("\n\r");
+    hal_uart_puts(ANSI_RESET);
+    hal_uart_puts("     :: AXON RTOS :: (v0.1.0-alpha) \n\r");
+    hal_uart_puts("     :: Build: RISC-V 32-bit (RV32I_Zicsr) \n\r");
+    hal_uart_puts("\n\r");
 
-    // 2. SEQUÊNCIA DE BOOT
     log_info("Boot sequence initiated...");
     
-    // Simulação de check de memória
-    log_info("Probing system memory map...");
-    log_ok("RAM validated: 256K available at 0x80000000");
-
-    // Inicialização da UART
-    log_info("Initializing I/O Subsystem...");
-    log_ok("UART0 driver loaded (921600 baud, 8N1)");
-
-    // Simulação de detecção da NPU (Futuro)
-    log_info("Detecting Neural Processing Unit...");
-    log_warn("NPU not detected (Simulation Mode Active)");
-
-    // 3. CONFIGURAÇÃO DE INTERRUPÇÕES
+    // 2. Configurar Interrupções
     log_info("Configuring Trap Vector Table...");
     
-    // mtvec
-    asm volatile("csrw mtvec, %0" : : "r"(trap_entry));
+    // Configura mtvec para o nosso trap_entry (Assembly)
+    // Nota: Usamos a macro do hal_irq.h para garantir alinhamento
+    hal_irq_set_handler(trap_entry);
     log_ok("Trap handler registered at 'trap_entry'");
 
-    // Timer
-    log_info("Calibrating System Timer (CLINT)...");
-    timer_init();
-    log_ok("Timer initialized (100ms interval)");
-
-    // Habilitar Global Interrupts
-    unsigned int mstatus;
-    asm volatile("csrr %0, mstatus" : "=r"(mstatus));
-    mstatus |= (1 << 3); 
-    asm volatile("csrw mstatus, %0" : : "r"(mstatus));
+    // 3. Configurar Timer
+    log_info("Starting System Timer...");
+    // Configura o primeiro disparo
+    hal_timer_set_irq_delta(TICK_DELTA_CYCLES);
     
-    uart_puts("\n\r");
-    log_ok("System Interrupts Enabled (MIE=1)");
-    uart_puts(ANSI_GREEN ">>> AXON KERNEL IS READY. <<<\n\r" ANSI_RESET);
-    uart_puts(ANSI_CYAN "Waiting for events...\n\r" ANSI_RESET);
+    // Habilita interrupção de Timer (MIE.MTIE)
+    hal_irq_mask_enable(IRQ_M_TIMER);
+    log_ok("Timer armed.");
 
-    // Loop infinito
-    while (1);
+    // 4. Habilitar Interrupções Globais
+    hal_irq_global_enable();
+    log_ok("Global Interrupts Enabled (MIE=1)");
 
+    hal_uart_puts(ANSI_GREEN ">>> AXON KERNEL IS READY. <<<\n\r" ANSI_RESET);
+    hal_uart_puts(ANSI_CYAN "Waiting for events...\n\r" ANSI_RESET);
+
+    // Loop Infinito
+    while (1) {
+        // Busy wait (compatível com FPGA e QEMU)
+        // No futuro, usar 'wfi' apenas se não for FPGA softcore
+        asm volatile("nop");
+    }
 }
-
-// ======================================================================================
