@@ -17,6 +17,7 @@
 #include "../../include/task.h"
 #include "../../include/syscall.h"
 #include "../../include/logger.h" 
+#include "../../include/mutex.h"
 
 // ======================================================================================
 //  CONFIGURAÇÕES GLOBAIS
@@ -29,6 +30,12 @@
 
 // Definido no trap.s
 extern void trap_entry();
+
+// Task atual rodando
+extern task_t *current_task;
+
+// Mutex para uso da UART
+mutex_t uart_mutex;
 
 // ======================================================================================
 //  ESPAÇO DO USUÁRIO 
@@ -43,20 +50,40 @@ extern void trap_entry();
 // Tarefa A: Um cidadão comportado
 void task_a(void) {
     while (1) {
-        // Pede ao kernel para imprimir (Syscall 2)
-        sys_puts("Hello, "); 
+
+        // Tenta pegar a chave da UART
+        // Se estiver ocupado (retorna 0), cede a vez (yield) e tenta de novo depois.
+        // Isso cria um "Spinlock Cooperativo"
+        while (sys_mutex_lock(&uart_mutex) == 0)  sys_yield(); 
         
+        // ------- REGIÃO CRÍTICA -------------------------------------------------------
+
+        // Tendo conseguido pegar a chave, agora, somos donos exclusivos da UART.
+        // Ninguém mais escreve além de nós.
+        sys_puts("Hello, ");
+
+        // ------------------------------------------------------------------------------
+
+        // Devolve a chave para a próxima tarefa usar.
+        sys_mutex_unlock(&uart_mutex);
+
         // Pede ao kernel para dormir (Syscall 3).
         // Isso coloca a tarefa em estado BLOCKED e libera a CPU imediatamente.
         sys_sleep(500);
+
     }
+
 }
 
 // Tarefa B: Outro cidadão comportado
 void task_b(void) {
     while (1) {
-        sys_puts("World!\n"); 
+        
+        while (sys_mutex_lock(&uart_mutex) == 0)  sys_yield(); 
+        sys_puts("World!\n\r");
+        sys_mutex_unlock(&uart_mutex);
         sys_sleep(500);
+
     }
 }
 
@@ -142,6 +169,35 @@ void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
                     // Tarefa diz: "Me acorde daqui a X ms"
                     scheduler_sleep(arg0);
                     break;
+
+                case SYS_LOCK: {
+                        // O argumento a0 é o ponteiro para o mutex
+                        mutex_t *m = (mutex_t *)arg0;
+                        
+                        // Lógica Atômica (Kernel Mode):
+                        if (m->locked == 0) {
+                            // Sucesso! A porta estava aberta.
+                            m->locked = 1;
+                            m->owner_tid = current_task->tid;
+                            ctx[9] = 1; // Retorna 1 em a0 (ctx[9])
+                        } else {
+                            // Falha! Alguém já trancou.
+                            ctx[9] = 0; // Retorna 0 em a0
+                        }
+                    }
+                    break;
+
+                case SYS_UNLOCK: {
+                        mutex_t *m = (mutex_t *)arg0;
+                        // Segurança: Só o dono pode destrancar!
+                        if (m->locked && m->owner_tid == current_task->tid) {
+                            m->locked = 0;
+                            m->owner_tid = 0;
+                            // Assim que destrancamos, outra tarefa pode tentar pegar.
+                            // O scheduler vai decidir quem roda a seguir.
+                        }
+                    }
+                    break;
                     
                 default:
                     hal_uart_puts("[KERNEL] Syscall desconhecida.\n\r");
@@ -214,6 +270,9 @@ void kernel_main() {
     // Libera as interrupções globais (MIE bit)
     hal_irq_global_enable();
     log_ok("Interrupts Enabled.");
+
+    // Inicializa MUTEXES
+    mutex_init(&uart_mutex);
 
     // ----------------------------------------------------------------------------------
     // FASE 3: Criação de Processos

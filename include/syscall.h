@@ -2,6 +2,7 @@
 #define SYSCALL_H
 
 #include <stdint.h>
+#include "mutex.h"
 
 // ==========================================================================================================
 //  TABELA DE NÚMEROS DE SYSCALL
@@ -13,6 +14,8 @@
 #define SYS_YIELD   1   // Ceder a CPU voluntariamente
 #define SYS_WRITE   2   // Escrever no console (UART)
 #define SYS_SLEEP   3   // Dormir por N milissegundos
+#define SYS_LOCK    4   // Tentar pegar a chave
+#define SYS_UNLOCK  5   // Devolver a chave
 
 // ==========================================================================================================
 //  API DO USUÁRIO (User-Mode Wrappers)
@@ -134,6 +137,34 @@ static inline void sys_sleep(uint32_t ms) {
         : 
         : "r"(ms),          // Input %0
           "i"(SYS_SLEEP)    // Input %1
+        : "a0", "a7", "memory"
+    );
+}
+
+// Tenta trancar o mutex.
+// Retorna 1 se conseguiu a chave.
+// Retorna 0 se já estava trancado (falhou).
+static inline int sys_mutex_lock(mutex_t *m) {
+    int ret;
+    asm volatile (
+        "mv a0, %1\n"       // Arg0: Endereço do mutex
+        "li a7, %2\n"       // ID: SYS_LOCK
+        "ecall\n"           // Chama o Kernel
+        "mv %0, a0"         // Pega o retorno (a0) e põe em 'ret'
+        : "=r"(ret) 
+        : "r"(m), "i"(SYS_LOCK) 
+        : "a0", "a7", "memory"
+    );
+    return ret;
+}
+
+// Destranca o mutex (libera para outros).
+static inline void sys_mutex_unlock(mutex_t *m) {
+    asm volatile (
+        "mv a0, %0\n"       // Arg0: Endereço do mutex
+        "li a7, %1\n"       // ID: SYS_UNLOCK
+        "ecall"
+        : : "r"(m), "i"(SYS_UNLOCK) 
         : "a0", "a7", "memory"
     );
 }
