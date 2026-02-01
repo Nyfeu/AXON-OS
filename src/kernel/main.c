@@ -251,6 +251,7 @@ void kernel_main() {
     // Cria as tarefas do usuário (Pilha, Contexto, TCB)
     task_create(task_a, "Task A", 1);
     task_create(task_b, "Task B", 1);
+    task_create(task_shell, "Shell", 2);
     
     // Cria a tarefa de background (obrigatória para o scheduler não falhar)
     task_create(task_idle, "Idle", 0);

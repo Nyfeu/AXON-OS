@@ -1,6 +1,8 @@
 #include "../../../include/hal_uart.h"
 #include "memory_map.h"
 
+#define UART_IRQ_ID 10
+
 void hal_uart_init(void) {
     // 1. Desabilita interrupções temporariamente
     MMIO8(UART0_BASE + UART_IER) = 0x00;
@@ -42,4 +44,8 @@ int hal_uart_kbhit(void) {
 char hal_uart_getc(void) {
     while (!hal_uart_kbhit()); // Bloqueante
     return (char)MMIO8(UART0_BASE + UART_RBR);
+}
+
+uint8_t get_uart_irq_id() {
+    return UART_IRQ_ID;
 }

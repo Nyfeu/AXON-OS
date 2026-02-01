@@ -33,4 +33,9 @@ int hal_uart_kbhit(void);
  */
 char hal_uart_getc(void);
 
+/*
+ * Retorna o ID PLIC da UART no sistema.
+ */
+uint8_t get_uart_irq_id(void);
+
 #endif /* HAL_UART_H */

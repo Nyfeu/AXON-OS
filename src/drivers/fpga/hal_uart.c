@@ -1,6 +1,8 @@
 #include "hal_uart.h"
 #include "memory_map.h"
 
+#define UART_IRQ_ID 1
+
 /* * Implementação da Inicialização
  */
 void hal_uart_init(void) {
@@ -52,4 +54,8 @@ char hal_uart_getc(void) {
     MMIO32(UART_CTRL_REG_ADDR) = UART_CMD_RX_POP;
 
     return c;
+}
+
+uint8_t get_uart_irq_id() {
+    return UART_IRQ_ID;
 }
