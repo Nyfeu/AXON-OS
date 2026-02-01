@@ -18,6 +18,7 @@
 #include "../../include/syscall.h"
 #include "../../include/logger.h" 
 #include "../../include/mutex.h"
+#include "../../include/apps.h"
 
 // ======================================================================================
 //  CONFIGURAÇÕES GLOBAIS
@@ -34,61 +35,13 @@ extern void trap_entry();
 // Task atual rodando
 extern task_t *current_task;
 
-// Mutex para uso da UART
-mutex_t uart_mutex;
-
 // ======================================================================================
-//  ESPAÇO DO USUÁRIO 
-// ======================================================================================
-//
-//  Estas funções representam programas rodando no SO.
-//  Note que elas NÃO acessam hardware diretamente (nada de mmio_write).
-//  Elas usam as syscalls para pedir favores ao Kernel.
-//
+// Tarefa IDLE 
 // ======================================================================================
 
-// Tarefa A: Um cidadão comportado
-void task_a(void) {
-    while (1) {
-
-        // Tenta pegar a chave da UART
-        // Se estiver ocupado (retorna 0), cede a vez (yield) e tenta de novo depois.
-        // Isso cria um "Spinlock Cooperativo"
-        while (sys_mutex_lock(&uart_mutex) == 0)  sys_yield(); 
-        
-        // ------- REGIÃO CRÍTICA -------------------------------------------------------
-
-        // Tendo conseguido pegar a chave, agora, somos donos exclusivos da UART.
-        // Ninguém mais escreve além de nós.
-        sys_puts("Hello, ");
-
-        // ------------------------------------------------------------------------------
-
-        // Devolve a chave para a próxima tarefa usar.
-        sys_mutex_unlock(&uart_mutex);
-
-        // Pede ao kernel para dormir (Syscall 3).
-        // Isso coloca a tarefa em estado BLOCKED e libera a CPU imediatamente.
-        sys_sleep(500);
-
-    }
-
-}
-
-// Tarefa B: Outro cidadão comportado
-void task_b(void) {
-    while (1) {
-        
-        while (sys_mutex_lock(&uart_mutex) == 0)  sys_yield(); 
-        sys_puts("World!\n\r");
-        sys_mutex_unlock(&uart_mutex);
-        sys_sleep(500);
-
-    }
-}
-
-// Tarefa Idle: O scheduler escolhe esta tarefa quando ninguém mais quer rodar.
+// O scheduler escolhe esta tarefa quando ninguém mais quer rodar.
 // Sua função é economizar energia.
+
 void task_idle(void) {
     while (1) {
         
@@ -134,10 +87,21 @@ void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
                 break;
             
             case 11: // Machine External Interrupt (PLIC)
-                // Usado para UART RX, Botões, etc.
                 {
+                    // Usado para UART RX, Botões, etc.
+                    // Agora usamos o Dispatcher para PLIC
                     uint32_t source = hal_plic_claim();
-                    if (source) hal_plic_complete(source);
+                    
+                    if (source) {
+
+                        // O Dispatcher olha na tabela e chama a função registrada
+                        irq_dispatch(source);
+                        
+                        // Avisa o hardware que terminamos
+                        hal_plic_complete(source);
+
+                    }
+
                 }
                 break;
         }
@@ -271,8 +235,11 @@ void kernel_main() {
     hal_irq_global_enable();
     log_ok("Interrupts Enabled.");
 
+    // Inicializa interrupções de plataforma (PLIC)
+    hal_irq_init();  
+
     // Inicializa MUTEXES
-    mutex_init(&uart_mutex);
+    apps_init();
 
     // ----------------------------------------------------------------------------------
     // FASE 3: Criação de Processos

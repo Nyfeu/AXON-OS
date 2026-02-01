@@ -77,4 +77,10 @@ static inline void hal_irq_set_handler(void (*handler_addr)(void)) {
     asm volatile ("csrw mtvec, %0" :: "r"(val));
 }
 
+/**
+ * @brief Despachante chamado pelo trap_handler
+ * @param source ID do PLIC
+ */
+void irq_dispatch(uint32_t source);
+
 #endif // HAL_IRQ_H
