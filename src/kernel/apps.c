@@ -5,6 +5,7 @@
 #include "../../include/hal_irq.h"  
 #include "../../include/hal_plic.h" 
 #include "../../include/circular_buffer.h"
+#include "../../include/logger.h"
 
 // Mutex para uso da UART
 mutex_t uart_mutex;
@@ -14,6 +15,21 @@ cbuf_t  rx_buffer;
 
 // Tamanho máximo do comando SHELL
 #define CMD_MAX_LEN 64
+
+// Endereço base do sistema (RAM)
+extern void _start(void);
+
+// ======================================================================================
+// Definições de CORES para o SHELL
+// ======================================================================================
+
+#define SH_RESET   "\033[0m"
+#define SH_CYAN    "\033[36m"
+#define SH_GREEN   "\033[32m"
+#define SH_YELLOW  "\033[33m"
+#define SH_RED     "\033[31m"
+#define SH_BOLD    "\033[1m"
+#define SH_GRAY    "\033[90m"
 
 // ======================================================================================
 // ISR (Interrupt Service Routine) 
@@ -37,8 +53,18 @@ void uart_isr(void) {
  
 }
 // ======================================================================================
-// HELPER DE SAÍDA
+// HELPERS
 // ======================================================================================
+
+int sys_strcmp(const char *s1, const char *s2) {
+
+    // Retorna 0 se as strings forem iguais.
+    while (*s1 && (*s1 == *s2)) {
+        s1++; s2++;
+    }
+    return *(const unsigned char *)s1 - *(const unsigned char *)s2;
+
+}
 
 void safe_puts(const char* s) {
 
@@ -57,6 +83,24 @@ void safe_puts(const char* s) {
 
     // Devolve a chave para a próxima tarefa usar.
     sys_mutex_unlock(&uart_mutex);
+
+}
+
+void show_prompt(void) {
+    // Prompt colorido: "user@axon:~$ "
+    safe_puts(SH_GREEN "root@axon" SH_RESET ":" SH_CYAN "~$ " SH_RESET);
+}
+
+void clear_screen(void) {
+
+    safe_puts("\033[2J\033[H");
+    
+    // Banner Bonito
+    safe_puts("\n");
+    safe_puts(SH_CYAN SH_BOLD);
+    safe_puts("   AXON RTOS ");
+    safe_puts(SH_RESET SH_GRAY " v0.1.0-alpha (RISC-V 32)\n" SH_RESET);
+    safe_puts(SH_GRAY "   Type 'help' for commands.\n\n" SH_RESET);
 
 }
 
@@ -101,72 +145,106 @@ void task_b(void) {
 
 // Tarefa SHELL: Reponsável por leitura do teclado
 void task_shell(void) {
-
     uint8_t c;
-    char cmd_buf[CMD_MAX_LEN];   // Buffer para guardar o que foi digitado
-    int cmd_idx = 0;             // Posição atual do cursor
+    char cmd_buf[CMD_MAX_LEN];
+    int cmd_idx = 0;
 
-    safe_puts("\n[SHELL] Ready. Type something:\n> ");
+    show_prompt();
     
     while (1) {
 
-        // Tenta pegar dado do buffer circular
         if (cbuf_pop(&rx_buffer, &c)) {
             
-            // --- TRATAMENTO DE TECLAS ESPECIAIS ---
+            // 1. CTRL+L (Clear)
+            if (c == 12) {
+                clear_screen();
+                show_prompt();
+                cmd_buf[cmd_idx] = 0;
+                safe_puts(cmd_buf);
+            }
+            
+            // 2. ENTER (Use 'else if' para não cair nos outros!)
+            else if (c == '\r') {
+                cmd_buf[cmd_idx] = 0;
+                safe_puts("\n");
 
-            // 1. ENTER (Carriage Return '\r')
-            if (c == '\r') {
-                cmd_buf[cmd_idx] = 0; // Finaliza a string (Null Terminator)
-                
-                safe_puts("\n");      // Pula linha visualmente
-                
-                // Se o comando não for vazio, executa (simulação)
                 if (cmd_idx > 0) {
-                    safe_puts("[CMD] Executing: ");
-                    safe_puts(cmd_buf);
-                    safe_puts("\n");
+
+                    // --- COMANDO HELP ---
+                    if (sys_strcmp(cmd_buf, "help") == 0) {
+                        safe_puts(SH_BOLD "\n  AVAILABLE COMMANDS\n" SH_RESET);
+                        safe_puts(SH_GRAY "  ------------------------------------------\n" SH_RESET);
+                        safe_puts("  " SH_CYAN "help  " SH_RESET "  Show this information\n");
+                        safe_puts("  " SH_CYAN "clear " SH_RESET "  Clear the terminal screen\n");
+                        safe_puts("  " SH_CYAN "ps    " SH_RESET "  Show process status (Tasks)\n");
+                        safe_puts("  " SH_CYAN "reboot" SH_RESET "  Reboot the system\n");
+                        safe_puts("  " SH_CYAN "panic " SH_RESET "  Trigger a Kernel Panic test\n");
+                        safe_puts("\n");
+                    }
+
+                    // --- COMANDO CLEAR ---
+                    else if (sys_strcmp(cmd_buf, "clear") == 0) {
+                        clear_screen();
+                    }
+
+                    // --- COMANDO REBOOT ---
+                    else if (sys_strcmp(cmd_buf, "reboot") == 0) {
+                        safe_puts("Rebooting...\n");
+                        sys_sleep(500); // Aqui pode usar sys_sleep (estamos em User Mode)
+                        _start();
+                    }
+
+                    // --- COMANDO PANIC ---
+                    else if (sys_strcmp(cmd_buf, "panic") == 0) {
+                        safe_puts("Triggering Illegal Instruction...\n");
+                        asm volatile(".word 0xFFFFFFFF");
+                    }
+
+                    // --- COMANDO PS (Process Status) ---
+                    else if (sys_strcmp(cmd_buf, "ps") == 0) {
+                        safe_puts(SH_BOLD "\n  PID   NAME        PRIO   STATE\n" SH_RESET);
+                        safe_puts(SH_GRAY "  ------------------------------------\n" SH_RESET);
+                        
+                        // Nota: Como ainda não temos uma Syscall para ler a memória do Kernel,
+                        // estes dados são estáticos (hardcoded) por enquanto.
+                        safe_puts("  0     Idle        0      " SH_GREEN "RUNNING" SH_RESET "\n");
+                        safe_puts("  1     Task A      1      " SH_YELLOW "WAITING" SH_RESET "\n");
+                        safe_puts("  2     Task B      1      " SH_YELLOW "WAITING" SH_RESET "\n");
+                        safe_puts("  3     Shell       2      " SH_GREEN "RUNNING" SH_RESET "\n");
+                        safe_puts("\n");
+                    }
+
+                    // -- COMANDO DESCONHECIDO ---
+                    else {
+                        safe_puts("Unknown: ");
+                        safe_puts(cmd_buf);
+                        safe_puts("\n");
+                    }
                     
-                    // Aqui colocariamos um "if (strcmp(cmd_buf, "help") == 0)..."
                 }
 
-                // Reseta para o próximo comando
-                safe_puts("> ");
+                show_prompt();
                 cmd_idx = 0;
 
             }
             
-            // 2. BACKSPACE (ASCII 127 ou 8)
+            // 3. BACKSPACE
             else if (c == 127 || c == '\b') {
                 if (cmd_idx > 0) {
-                    // Lógica Visual:
-                    // 1. '\b': Move o cursor para a esquerda (em cima do caractere errado)
-                    // 2. ' ':  Sobrescreve com espaço (apaga visualmente)
-                    // 3. '\b': Move para a esquerda de novo (para ficar pronto para escrever)
                     safe_puts("\b \b");
-                    
-                    // Lógica de Memória:
-                    cmd_idx--; // Remove do buffer
+                    cmd_idx--;
                 }
             }
             
-            // --- CARACTERE NORMAL ---
+            // 4. CARACTERE NORMAL (Só entra aqui se não foi nenhum dos acima)
             else {
-
-                // Proteção contra Buffer Overflow (não deixa digitar mais que 64 chars)
-                if (cmd_idx < (CMD_MAX_LEN - 1)) {
-                    // Echo Visual (Obrigatório para o usuário ver o que digita)
+                if (cmd_idx < (CMD_MAX_LEN - 1) && c >= 32 && c <= 126) {
                     char s[2] = { (char)c, 0 };
                     safe_puts(s);
-                    
-                    // Guarda na memória
                     cmd_buf[cmd_idx++] = c;
                 }
-
             }
-
         } else {
-            // Se não tem tecla, cede a CPU
             sys_yield(); 
         }
     }

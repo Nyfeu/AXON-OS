@@ -32,6 +32,9 @@
 // Definido no trap.s
 extern void trap_entry();
 
+// Inicio do sistema (RAM)
+extern void _start(void);
+
 // Task atual rodando
 extern task_t *current_task;
 
@@ -176,12 +179,23 @@ void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
             ctx[31] += 4;
 
         } else {
+
             // Se chegamos aqui, foi um erro grave (Crash, Instrução Ilegal, etc)
             hal_uart_puts(ANSI_RED "\n\r[CRIT] EXCEPTION DETECTED!\n\r");
             hal_uart_puts("   > MCAUSE: "); print_hex(mcause); hal_uart_puts("\n\r");
             hal_uart_puts("   > MEPC:   "); print_hex(mepc);   hal_uart_puts("\n\r");
-            hal_uart_puts("System Halted." ANSI_RESET);
-            while(1); // Trava o sistema para análise
+            hal_uart_puts("System Halted.\n\n" ANSI_RESET);
+            
+            hal_uart_puts(ANSI_YELLOW "System will reboot in 3 seconds...\n\r" ANSI_RESET);
+
+            // Não podemos usar sys_sleep (precisa de scheduler).
+            // Usamos o Hardware Timer (independente de interrupções)
+            hal_timer_delay_ms(3000);
+
+            // Mensagem de aviso
+            hal_uart_puts("Rebooting now!\n\r");
+            _start();
+
         }
     }
 }

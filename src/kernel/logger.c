@@ -12,7 +12,7 @@ void log_info(const char* msg) {
 }
 
 void log_ok(const char* msg) {
-    hal_uart_puts(ANSI_GREEN "[  OK   ] " ANSI_RESET);
+    hal_uart_puts(ANSI_GREEN "[ OK    ] " ANSI_RESET);
     hal_uart_puts(msg);
     hal_uart_puts("\n\r");
 }
