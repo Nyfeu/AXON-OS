@@ -34,6 +34,14 @@ void log_warn(const char* msg) {
     uart_puts("\n\r");
 }
 
+void print_hex(unsigned int val) {
+    char hex_chars[] = "0123456789ABCDEF";
+    uart_puts("0x");
+    for (int i = 28; i >= 0; i -= 4) {
+        uart_putc(hex_chars[(val >> i) & 0xF]);
+    }
+}
+
 // ======================================================================================
 //  TRATAMENTO DE INTERRUPÇÕES
 // ======================================================================================
@@ -48,16 +56,28 @@ void trap_handler(unsigned int mcause, unsigned int mepc) {
     int cause_code = mcause & 0x7FFFFFFF;
 
     if (is_interrupt) {
-        if (cause_code == 7) { // Machine Timer Interrupt
-            // Opcional: Não printar "Tick" toda hora para não poluir o visual lindo
-            // uart_puts("."); 
+        if (cause_code == 7) { 
+            
+            // Machine Timer Interrupt
             timer_handler();
+
         } else {
-            uart_puts(ANSI_RED "\n\r[FAIL] Unknown Interrupt Detected!\n\r" ANSI_RESET);
+
+            uart_puts(ANSI_RED "\n\r[FAIL] Unknown Interrupt: ");
+            print_hex(cause_code);
+            uart_puts("\n\r" ANSI_RESET);
+
         }
+
     } else {
-        uart_puts(ANSI_RED "\n\r[CRIT] CPU EXCEPTION OCCURRED! HALTING.\n\r" ANSI_RESET);
+
+        // TRAP SÍNCRONA (EXCEÇÃO)
+        uart_puts(ANSI_RED "\n\r[CRIT] EXCEPTION DETECTED!\n\r");
+        uart_puts("   > MCAUSE: "); print_hex(mcause); uart_puts(" (Cause)\n\r");
+        uart_puts("   > MEPC:   "); print_hex(mepc);   uart_puts(" (Address)\n\r");
+        uart_puts("System Halted." ANSI_RESET);
         while(1);
+
     }
 
 }
@@ -70,7 +90,7 @@ void kernel_main() {
 
     uart_init();
     
-    // Limpar tela (opcional) e posicionar cursor no topo
+    // Limpar tela e posicionar cursor no topo
     uart_puts("\033[2J\033[H");
 
     // 1. ASCII ART BANNER
@@ -127,9 +147,7 @@ void kernel_main() {
     uart_puts(ANSI_CYAN "Waiting for events...\n\r" ANSI_RESET);
 
     // Loop infinito
-    while (1) {
-        asm volatile("wfi");
-    }
+    while (1);
 
 }
 
