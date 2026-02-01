@@ -1,8 +1,6 @@
 #include "../../../include/hal_timer.h"
 #include "memory_map.h" // Acesso aos registradores do QEMU
 
-#define SYSTEM_CLOCK_HZ 10000000  // 10 MHz (Clock base do QEMU 'virt')
-
 // ============================================================================
 // FUNÇÕES AUXILIARES (Internas)
 // ============================================================================
@@ -65,4 +63,12 @@ void hal_timer_delay_ms(uint32_t ms) {
     // 1 ms = 10.000 ciclos (@ 10MHz)
     uint64_t cycles_to_wait = (uint64_t)ms * 10000;
     while ((hal_timer_get_cycles() - start) < cycles_to_wait);
+}
+
+uint32_t hal_timer_get_freq(void) {
+    return SYSTEM_CLOCK_HZ;
+}
+
+void hal_timer_idle(void) {
+    asm volatile("wfi"); 
 }

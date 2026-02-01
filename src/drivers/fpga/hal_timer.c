@@ -2,8 +2,6 @@
 #include "math_ops.h"
 #include "memory_map.h"
 
-#define SYSTEM_CLOCK_HZ 100000000  // 100 MHz (Clock base da FPGA)
-
 // ============================================================================
 // FUNÇÕES DE DELAY (BLOQUEANTE)
 // ============================================================================
@@ -71,4 +69,12 @@ void hal_timer_set_irq_delta(uint64_t delta_cycles) {
 
 void hal_timer_irq_ack(void) {
     hal_clint_set_cmp(0xFFFFFFFFFFFFFFFF);
+}
+
+uint32_t hal_timer_get_freq(void) {
+    return SYSTEM_CLOCK_HZ;
+}
+
+void hal_timer_idle(void) {
+    asm volatile("nop"); 
 }

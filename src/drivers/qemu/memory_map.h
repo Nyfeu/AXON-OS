@@ -8,6 +8,9 @@
 #define MMIO32(addr)  (*(volatile uint32_t *)(addr))
 #define MMIO64(addr)  (*(volatile uint64_t *)(addr))
 
+// 10 MHz (Clock base do QEMU 'virt')
+#define SYSTEM_CLOCK_HZ 10000000 
+
 /* ========================================================== */
 /* [SIM] QEMU 'VIRT' MACHINE ADDRESSES                        */
 /* ========================================================== */

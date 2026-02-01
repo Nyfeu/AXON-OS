@@ -8,6 +8,18 @@
 // ============================================================================
 
 /**
+ * @brief Retorna a frequência base do Timer em Hz.
+ * Útil para calcular delays e timeouts independente da plataforma.
+ */
+uint32_t hal_timer_get_freq(void);
+
+/**
+ * @brief Entra em estado IDLE.
+ * Utiliza WFI para economizar energia ou NOP para não realizar nenhuma tarefa.
+ */
+void hal_timer_idle(void);
+
+/**
  * @brief Reinicia o contador de tempo (Escreve 0 no mtime).
  */
 void hal_timer_reset(void);
