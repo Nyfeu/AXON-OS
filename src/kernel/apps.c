@@ -104,6 +104,16 @@ void clear_screen(void) {
 
 }
 
+void val_to_hex(uint32_t val, char* out_buf) {
+    const char hex_chars[] = "0123456789ABCDEF";
+    out_buf[0] = '0'; 
+    out_buf[1] = 'x';
+    for (int i = 7; i >= 0; i--) {
+        out_buf[2 + (7-i)] = hex_chars[(val >> (i*4)) & 0xF];
+    }
+    out_buf[10] = 0; // Null terminator
+}
+
 // ======================================================================================
 //  ESPAÇO DO USUÁRIO 
 // ======================================================================================
@@ -202,15 +212,64 @@ void task_shell(void) {
 
                     // --- COMANDO PS (Process Status) ---
                     else if (sys_strcmp(cmd_buf, "ps") == 0) {
-                        safe_puts(SH_BOLD "\n  PID   NAME        PRIO   STATE\n" SH_RESET);
-                        safe_puts(SH_GRAY "  ------------------------------------\n" SH_RESET);
+                        task_info_t list[8]; 
+                        int count = sys_get_tasks(list, 8);
                         
-                        // Nota: Como ainda não temos uma Syscall para ler a memória do Kernel,
-                        // estes dados são estáticos (hardcoded) por enquanto.
-                        safe_puts("  0     Idle        0      " SH_GREEN "RUNNING" SH_RESET "\n");
-                        safe_puts("  1     Task A      1      " SH_YELLOW "WAITING" SH_RESET "\n");
-                        safe_puts("  2     Task B      1      " SH_YELLOW "WAITING" SH_RESET "\n");
-                        safe_puts("  3     Shell       2      " SH_GREEN "RUNNING" SH_RESET "\n");
+                        // Cabeçalho expandido
+                        safe_puts(SH_BOLD "\n  PID   NAME            PRIO   STATE      SP          WAKE_TIME\n" SH_RESET);
+                        safe_puts(SH_GRAY "  ----------------------------------------------------------------\n" SH_RESET);
+                        
+                        for (int i = 0; i < count; i++) {
+                            // 1. PID
+                            char pid_str[4];
+                            pid_str[0] = list[i].id + '0'; 
+                            pid_str[1] = 0;
+                            
+                            // 2. STATE
+                            const char *state_str;
+                            switch(list[i].state) {
+                                case 0: state_str = SH_GREEN "READY  " SH_RESET; break;
+                                case 1: state_str = SH_CYAN  "RUNNING" SH_RESET; break;
+                                case 2: state_str = SH_YELLOW "WAITING" SH_RESET; break;
+                                default: state_str = "UNKNOWN"; break;
+                            }
+
+                            // 3. SP (Stack Pointer) em Hex
+                            char sp_str[12];
+                            val_to_hex(list[i].sp, sp_str);
+
+                            // 4. Wake Time (apenas os 32 bits baixos para caber na tela)
+                            char wake_str[12];
+                            val_to_hex((uint32_t)list[i].wake_time, wake_str);
+
+                            // --- IMPRESSÃO FORMATADA ---
+                            safe_puts("  ");
+                            safe_puts(pid_str);
+                            safe_puts("     ");
+                            
+                            // Nome alinhado
+                            safe_puts(list[i].name);
+                            int len = 0; while(list[i].name[len]) len++;
+                            for(int s=0; s<(16-len); s++) safe_puts(" ");
+                            
+                            // Prioridade
+                            if (list[i].priority == 0) safe_puts("0      ");
+                            else safe_puts("1      ");
+                            
+                            // Estado
+                            safe_puts(state_str);
+                            safe_puts("    ");
+                            
+                            // SP
+                            safe_puts(sp_str);
+                            safe_puts("  ");
+                            
+                            // Wake Time (Se for 0 ou muito antigo, mostra tracinho)
+                            if (list[i].state != 2) safe_puts("-         ");
+                            else safe_puts(wake_str);
+                            
+                            safe_puts("\n");
+                        }
                         safe_puts("\n");
                     }
 

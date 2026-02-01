@@ -15,6 +15,7 @@
 #include "../../include/hal_uart.h"
 #include "../../include/hal_timer.h"
 #include "../../include/logger.h"
+#include "../../include/syscall.h"
 #include <stddef.h>
 
 // ======================================================================================
@@ -154,6 +155,32 @@ int task_create(void (*function)(void), const char* name, uint32_t priority) {
     task_count++;
     return t->tid;
 
+}
+
+// ======================================================================================
+// Informações das Tasks no Sistema
+// ======================================================================================
+
+// Retorna quantos processos foram copiados
+int scheduler_get_tasks_info(task_info_t *user_buffer, int max_count) {
+    int count = 0;
+    
+    for (int i = 0; i < task_count && count < max_count; i++) {
+        // Copia dados do TCB interno para a struct pública
+        user_buffer[i].id        = tasks[i].tid;
+        user_buffer[i].state     = tasks[i].state;
+        user_buffer[i].priority  = tasks[i].priority;
+        user_buffer[i].sp        = tasks[i].sp;
+        user_buffer[i].wake_time = tasks[i].wake_time;
+        
+        // Copia o nome (strcpy manual seguro)
+        for (int j = 0; j < 16; j++) {
+            user_buffer[i].name[j] = tasks[i].name[j];
+        }
+        
+        count++;
+    }
+    return count;
 }
 
 // ======================================================================================

@@ -11,11 +11,27 @@
 // Estes números são o "código do pedido". O Kernel usa um switch/case no 
 // trap_handler para saber qual serviço executar.
 
-#define SYS_YIELD   1   // Ceder a CPU voluntariamente
-#define SYS_WRITE   2   // Escrever no console (UART)
-#define SYS_SLEEP   3   // Dormir por N milissegundos
-#define SYS_LOCK    4   // Tentar pegar a chave
-#define SYS_UNLOCK  5   // Devolver a chave
+#define SYS_YIELD     1   // Ceder a CPU voluntariamente
+#define SYS_WRITE     2   // Escrever no console (UART)
+#define SYS_SLEEP     3   // Dormir por N milissegundos
+#define SYS_LOCK      4   // Tentar pegar a chave
+#define SYS_UNLOCK    5   // Devolver a chave
+#define SYS_GET_TASKS 6   // Informações das tasks no sistema
+
+// ==========================================================================================================
+// Informações do Processo
+// ==========================================================================================================
+
+typedef struct {
+
+    uint32_t id;         // PID
+    char name[16];       // Nome da Tarefa
+    uint32_t state;      // 0=Ready, 1=Running, 2=Blocked
+    uint32_t priority;   // Prioridade
+    uint32_t sp;         // Stack Pointer atual
+    uint64_t wake_time;  // Ciclo de clock para acordar
+
+} task_info_t;
 
 // ==========================================================================================================
 //  API DO USUÁRIO (User-Mode Wrappers)
@@ -167,6 +183,22 @@ static inline void sys_mutex_unlock(mutex_t *m) {
         : : "r"(m), "i"(SYS_UNLOCK) 
         : "a0", "a7", "memory"
     );
+}
+
+// Retorna o número de tarefas encontradas
+static inline int sys_get_tasks(task_info_t *buffer, int max_count) {
+    int ret;
+    asm volatile (
+        "mv a0, %1\n"       // Arg0: Ponteiro para o buffer
+        "mv a1, %2\n"       // Arg1: Tamanho máximo do buffer
+        "li a7, %3\n"       // ID: SYS_GET_TASKS
+        "ecall\n"
+        "mv %0, a0"         // Retorno: Quantidade de tarefas copiadas
+        : "=r"(ret) 
+        : "r"(buffer), "r"(max_count), "i"(SYS_GET_TASKS) 
+        : "a0", "a1", "a7", "memory"
+    );
+    return ret;
 }
 
 #endif /* SYSCALL_H */

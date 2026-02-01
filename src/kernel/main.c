@@ -21,6 +21,12 @@
 #include "../../include/apps.h"
 
 // ======================================================================================
+//  PROTÓTIPOS DE FUNÇÕES
+// ======================================================================================
+
+int scheduler_get_tasks_info(void *user_buffer, int max_count);
+
+// ======================================================================================
 //  CONFIGURAÇÕES GLOBAIS
 // ======================================================================================
 
@@ -163,6 +169,16 @@ void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
                             // Assim que destrancamos, outra tarefa pode tentar pegar.
                             // O scheduler vai decidir quem roda a seguir.
                         }
+                    }
+                    break;
+
+                case SYS_GET_TASKS: {
+                        // a0 = buffer, a1 = max_count
+                        void *buf = (void *)arg0;
+                        int max   = (int)ctx[10]; // a1 está no índice 10 do contexto (ver task.h/trap.s)
+                        
+                        // Chama a função do scheduler e retorna a contagem em a0
+                        ctx[9] = scheduler_get_tasks_info(buf, max); 
                     }
                     break;
                     
