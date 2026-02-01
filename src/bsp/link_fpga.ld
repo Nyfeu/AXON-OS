@@ -33,6 +33,9 @@ SECTIONS
     _bss_end = .;
   } >ram
 
+  . = ALIGN(4);
+  PROVIDE(_end = .);
+
   /* Stack no final absoluto da RAM física (0x80040000) */
   PROVIDE(_stack_top = ORIGIN(ram) + LENGTH(ram));
 }

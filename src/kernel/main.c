@@ -38,11 +38,37 @@ int scheduler_get_tasks_info(void *user_buffer, int max_count);
 // Definido no trap.s
 extern void trap_entry();
 
-// Inicio do sistema (RAM)
+// Símbolos do Linker
 extern void _start(void);
+extern void _end(void);
 
 // Task atual rodando
 extern task_t *current_task;
+
+// ======================================================================================
+//  HELPERS
+// ======================================================================================
+
+void print_dec(uint32_t n) {
+    if (n == 0) {
+        hal_uart_putc('0');
+        return;
+    }
+
+    char buf[12];
+    int i = 0;
+
+    // Extrai dígitos de trás para frente
+    while (n > 0) {
+        buf[i++] = (n % 10) + '0';
+        n /= 10;
+    }
+
+    // Imprime na ordem correta
+    while (i > 0) {
+        hal_uart_putc(buf[--i]);
+    }
+}
 
 // ======================================================================================
 // Tarefa IDLE 
@@ -247,6 +273,20 @@ void kernel_main() {
     // Mensagem de aviso da inicilização do processo de boot
     log_info("Boot sequence initiated...");
     
+    // Diagnóstico de Memória
+    uint32_t kernel_start = (uint32_t)_start;
+    uint32_t kernel_end   = (uint32_t)_end;
+    uint32_t kernel_size  = kernel_end - kernel_start;
+
+    hal_uart_puts(ANSI_CYAN "[ MEM   ] Kernel Memory Usage:\n\r");
+    hal_uart_puts("\n  > Start: "); print_hex(kernel_start); hal_uart_puts("\n\r");
+    hal_uart_puts("  > End:   "); print_hex(kernel_end);   hal_uart_puts("\n\r");
+    hal_uart_puts("  > Size:  "); 
+    print_dec(kernel_size); 
+    hal_uart_puts(" bytes (");
+    print_dec(kernel_size / 1024);
+    hal_uart_puts(" KB)\n\n\r" ANSI_RESET);
+
     // ----------------------------------------------------------------------------------
     // FASE 2: Configuração de Interrupções
     // ----------------------------------------------------------------------------------

@@ -3,12 +3,13 @@ ENTRY( _start )
 
 MEMORY
 {
-  /* QEMU virt RAM começa em 0x80000000. Vamos dar 128MB */
-  ram  (wxa) : ORIGIN = 0x80000000, LENGTH = 128M
+  /* QEMU virt RAM começa em 0x80000000. Vamos dar 256KB */
+  ram  (wxa) : ORIGIN = 0x80000000, LENGTH = 256K
 }
 
 SECTIONS
 {
+  
   .text : {
     PROVIDE(_text_start = .);
     *(.text .text.*)
@@ -30,7 +31,10 @@ SECTIONS
     _bss_end = .;
   } >ram
 
+  . = ALIGN(4);
+  PROVIDE(_end = .);
+
   /* Define o topo da pilha no final da RAM disponível */
-  /* CUIDADO: Em sistemas reais, reservamos espaço fixo. */
   PROVIDE(_stack_top = ORIGIN(ram) + LENGTH(ram));
+
 }
