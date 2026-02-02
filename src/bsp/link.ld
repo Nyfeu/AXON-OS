@@ -22,11 +22,13 @@ SECTIONS
 
   .data : {
     *(.data .data.*)
+    *(.sdata .sdata.*)
   } >ram
 
   .bss : {
     _bss_start = .;
     *(.bss .bss.*)
+    *(.sbss .sbss.*)
     *(COMMON)
     _bss_end = .;
   } >ram

@@ -19,6 +19,7 @@
 #include "../../include/logger.h" 
 #include "../../include/mutex.h"
 #include "../../include/apps.h"
+#include "../../include/mm.h"
 
 // ======================================================================================
 //  PROTÓTIPOS DE FUNÇÕES
@@ -287,6 +288,25 @@ void kernel_main() {
     print_dec(kernel_size / 1024);
     hal_uart_puts(" KB)\n\n\r" ANSI_RESET);
 
+    // Inicialização da HEAP
+
+    // Definição do tamanho da RAM Total 
+    uint32_t ram_total = 64 * 1024;
+
+    // O Heap começa no fim do Kernel (_end)
+    // Reservamos 4KB (4096) no final da RAM para a Pilha de Boot (Stack de segurança)
+    uint32_t heap_size = ram_total - kernel_size - 4096;
+
+    hal_uart_puts(ANSI_CYAN "[ MEM   ] Initializing Heap Manager...\n\n\r");
+    kmalloc_init((void*)_end, heap_size);
+    
+    // Verifica quanto sobrou
+    uint32_t free_ram = kget_free_memory();
+    hal_uart_puts("  > Available Heap: "); 
+    print_dec(free_ram); 
+    hal_uart_puts(" bytes.\n\r" ANSI_RESET);
+    hal_uart_putc('\n');
+
     // ----------------------------------------------------------------------------------
     // FASE 2: Configuração de Interrupções
     // ----------------------------------------------------------------------------------
@@ -327,7 +347,7 @@ void kernel_main() {
     task_create(task_idle, "Idle", 0);
     
     hal_uart_putc('\n');
-    hal_uart_puts(ANSI_GREEN ">>> AXON KERNEL IS READY. <<<\n\r" ANSI_RESET);
+    hal_uart_puts(ANSI_GREEN ">>> AXON KERNEL IS READY. <<<\n\n\r" ANSI_RESET);
     
     // ----------------------------------------------------------------------------------
     // FASE 4: Agendamento das Tarefas

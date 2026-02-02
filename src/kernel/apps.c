@@ -6,6 +6,7 @@
 #include "../../include/hal_plic.h" 
 #include "../../include/circular_buffer.h"
 #include "../../include/logger.h"
+#include "../../include/mm.h"
 
 // Mutex para uso da UART
 mutex_t uart_mutex;
@@ -271,6 +272,33 @@ void task_shell(void) {
                             safe_puts("\n");
                         }
                         safe_puts("\n");
+                    }
+
+                    // -- COMANDO MEMTEST ---
+                    else if (sys_strcmp(cmd_buf, "memtest") == 0) {
+                        safe_puts("Allocating 128 bytes on Heap...\n");
+                        
+                        // 1. Aloca
+                        char *ptr = (char*)kmalloc(128);
+                        
+                        if (ptr) {
+                            safe_puts("Success! Addr: ");
+                            // Imprime endereço 
+                            char addr_str[12];
+                            val_to_hex((uint32_t)ptr, addr_str);
+                            safe_puts(addr_str);
+                            safe_puts("\n");
+                            
+                            // 2. Usa (Escreve na memória)
+                            ptr[0] = 'H'; ptr[1] = 'e'; ptr[2] = 'y'; ptr[3] = '!'; ptr[4] = 0;
+                            safe_puts("Data written: "); safe_puts(ptr); safe_puts("\n");
+                            
+                            // 3. Libera
+                            safe_puts("Freeing memory...\n\n");
+                            kfree(ptr);
+                        } else {
+                            safe_puts(SH_RED "Malloc failed (OOM)!\n\n" SH_RESET);
+                        }
                     }
 
                     // -- COMANDO DESCONHECIDO ---
