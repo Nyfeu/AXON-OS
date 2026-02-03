@@ -1,6 +1,6 @@
-#include "../../include/syscall.h"
-#include "../../include/hal_gpio.h"
-#include "../../include/shell_utils.h"
+#include "sys/syscall.h"
+#include "hal/hal_gpio.h"
+#include "apps/shell_utils.h"
 
 // ======================================================================================
 // TASK: LEDS 

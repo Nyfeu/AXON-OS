@@ -1,8 +1,8 @@
-#include "../../include/syscall.h"
-#include "../../include/mutex.h"
-#include "../../include/hal_uart.h"
-#include "../../include/circular_buffer.h"
-#include "../../include/commands.h"
+#include "sys/syscall.h"
+#include "kernel/mutex.h"
+#include "hal/hal_uart.h"
+#include "util/circular_buffer.h"
+#include "apps/commands.h"
 
 // ======================================================================================
 // Definições de CORES para o SHELL

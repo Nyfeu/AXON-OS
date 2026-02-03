@@ -1,5 +1,5 @@
-#include "../../include/syscall.h"
-#include "../../include/shell_utils.h"
+#include "../../include/sys/syscall.h"
+#include "../../include/apps/shell_utils.h"
 
 // ======================================================================================
 // TASK: MONITOR (Uptime + Spinner)

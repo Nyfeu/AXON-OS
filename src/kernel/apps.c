@@ -1,12 +1,12 @@
-#include "../../include/syscall.h"
-#include "../../include/mutex.h"
-#include "../../include/apps.h"
-#include "../../include/apps_tasks.h"
-#include "../../include/hal_uart.h" 
-#include "../../include/hal_irq.h"  
-#include "../../include/hal_plic.h" 
-#include "../../include/circular_buffer.h"
-#include "../../include/logger.h"
+#include "sys/syscall.h"
+#include "kernel/mutex.h"
+#include "apps/apps.h"
+#include "apps/apps_tasks.h"
+#include "hal/hal_uart.h" 
+#include "hal/hal_irq.h"  
+#include "hal/hal_plic.h" 
+#include "util/circular_buffer.h"
+#include "kernel/logger.h"
 
 // ======================================================================================
 // VARIÁVEIS GLOBAIS

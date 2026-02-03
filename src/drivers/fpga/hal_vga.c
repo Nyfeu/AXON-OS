@@ -1,4 +1,4 @@
-#include "hal_vga.h"
+#include "../../../include/hal/hal_vga.h"
 #include "memory_map.h"
 
 void hal_vga_init(void) {

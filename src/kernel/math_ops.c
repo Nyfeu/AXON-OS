@@ -1,4 +1,4 @@
-#include "math_ops.h"
+#include "../include/util/math_ops.h"
 #include <stdint.h>
 
 /* * Software para Operações Matemáticas (RV32I) */

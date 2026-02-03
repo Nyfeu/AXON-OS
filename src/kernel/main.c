@@ -10,16 +10,16 @@
 //
 // ======================================================================================
 
-#include "../../include/hal_uart.h"
-#include "../../include/hal_timer.h"
-#include "../../include/hal_irq.h"
-#include "../../include/hal_plic.h" 
-#include "../../include/task.h"
-#include "../../include/syscall.h"
-#include "../../include/logger.h" 
-#include "../../include/mutex.h"
-#include "../../include/apps.h"
-#include "../../include/mm.h"
+#include "../../include/hal/hal_uart.h"
+#include "../../include/hal/hal_timer.h"
+#include "../../include/hal/hal_irq.h"
+#include "../../include/hal/hal_plic.h" 
+#include "../../include/kernel/task.h"
+#include "../../include/sys/syscall.h"
+#include "../../include/kernel/logger.h" 
+#include "../../include/kernel/mutex.h"
+#include "../../include/apps/apps.h"
+#include "../../include/kernel/mm.h"
 
 // ======================================================================================
 //  PROTÓTIPOS DE FUNÇÕES

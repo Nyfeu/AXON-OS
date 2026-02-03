@@ -11,8 +11,8 @@
  * @date 23/01/2026
  */
 
-#include "hal_npu.h"
-#include "hal_dma.h"
+#include "../../../include/hal/hal_npu.h"
+#include "../../../include/hal/hal_dma.h"
 #include "memory_map.h"
 
 // ============================================================================

@@ -1,4 +1,4 @@
-#include "../../../include/hal_dma.h"
+#include "../../../include/hal/hal_dma.h"
 
 int hal_dma_is_busy(void) { 
     return 0; 

@@ -11,11 +11,11 @@
 //
 // ======================================================================================
 
-#include "../../include/task.h"
-#include "../../include/hal_uart.h"
-#include "../../include/hal_timer.h"
-#include "../../include/logger.h"
-#include "../../include/syscall.h"
+#include "../../include/kernel/task.h"
+#include "../../include/hal/hal_uart.h"
+#include "../../include/hal/hal_timer.h"
+#include "../../include/kernel/logger.h"
+#include "../../include/sys/syscall.h"
 #include <stddef.h>
 
 // ======================================================================================

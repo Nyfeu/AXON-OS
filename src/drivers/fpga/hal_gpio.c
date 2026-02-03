@@ -1,4 +1,4 @@
-#include "hal_gpio.h"
+#include "../../../include/hal/hal_gpio.h"
 #include "memory_map.h" 
 
 // Estrutura mapeando os registradores do hardware

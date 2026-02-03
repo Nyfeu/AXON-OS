@@ -1,5 +1,5 @@
-#include "../include/hal_irq.h"
-#include "../include/hal_plic.h"
+#include "../include/hal/hal_irq.h"
+#include "../include/hal/hal_plic.h"
 #include <stddef.h>
 
 // Tabela de Vetores de Interrupção (RAM)

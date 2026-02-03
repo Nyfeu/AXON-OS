@@ -1,5 +1,5 @@
-#include "../../include/mm.h"
-#include "../../include/hal_uart.h"
+#include "../../include/kernel/mm.h"
+#include "../../include/hal/hal_uart.h"
 
 // Cabeçalho de cada bloco de memória
 // Cada alocação terá este "ticket" escondido antes dos dados.

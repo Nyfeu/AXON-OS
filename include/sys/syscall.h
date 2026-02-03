@@ -2,7 +2,7 @@
 #define SYSCALL_H
 
 #include <stdint.h>
-#include "mutex.h"
+#include "kernel/mutex.h"
 
 // ==========================================================================================================
 //  TABELA DE NÚMEROS DE SYSCALL

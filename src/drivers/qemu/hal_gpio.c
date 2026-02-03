@@ -1,5 +1,5 @@
-#include "hal_gpio.h"
-#include "logger.h" // Opcional, para debug
+#include "../../../include/hal/hal_gpio.h"
+#include "../../../include/kernel/logger.h" // Opcional, para debug
 
 // Variável estática para simular o estado dos LEDs na memória
 static uint16_t virtual_leds = 0;

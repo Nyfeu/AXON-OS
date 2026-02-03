@@ -1,5 +1,5 @@
-#include "hal_timer.h"
-#include "math_ops.h"
+#include "../../../include/hal/hal_timer.h"
+#include "../include/util/math_ops.h"
 #include "memory_map.h"
 
 // ============================================================================

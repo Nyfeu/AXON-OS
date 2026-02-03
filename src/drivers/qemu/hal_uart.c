@@ -1,4 +1,4 @@
-#include "../../../include/hal_uart.h"
+#include "../../../include/hal/hal_uart.h"
 #include "memory_map.h"
 
 #define UART_IRQ_ID 10

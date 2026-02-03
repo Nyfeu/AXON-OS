@@ -1,5 +1,5 @@
-#include "../../include/shell_utils.h"
-#include "../../include/mm.h"
+#include "apps/shell_utils.h"
+#include "kernel/mm.h"
 
 // ======================================================================================
 // COMANDO: MEMTEST

@@ -2,8 +2,8 @@
 #define SHELL_UTILS_H
 
 #include <stdint.h>
-#include "mutex.h"
-#include "syscall.h"
+#include "kernel/mutex.h"
+#include "sys/syscall.h"
 
 // ======================================================================================
 // Definições de CORES para o SHELL

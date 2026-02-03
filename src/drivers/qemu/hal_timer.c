@@ -1,4 +1,4 @@
-#include "../../../include/hal_timer.h"
+#include "../../../include/hal/hal_timer.h"
 #include "memory_map.h" // Acesso aos registradores do QEMU
 
 // ============================================================================

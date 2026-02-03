@@ -1,4 +1,4 @@
-#include "../../../include/hal_plic.h"
+#include "../../../include/hal/hal_plic.h"
 #include "memory_map.h"
 
 // ============================================================================

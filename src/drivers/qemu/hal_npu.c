@@ -1,5 +1,5 @@
-#include "../../../include/hal_npu.h"
-#include "../../../include/hal_uart.h"
+#include "../../../include/hal/hal_npu.h"
+#include "../../../include/hal/hal_uart.h"
 
 // Stubs para enganar o linker no QEMU
 void hal_npu_init(void) {}

@@ -1,5 +1,5 @@
-#include "../../include/logger.h"
-#include "../../include/hal_uart.h"
+#include "../../include/kernel/logger.h"
+#include "../../include/hal/hal_uart.h"
 
 // ============================================================================
 //  FUNÇÕES AUXILIARES DE LOG
