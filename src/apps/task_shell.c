@@ -185,7 +185,7 @@ void task_shell(void) {
                 cmd_buf[cmd_idx++] = c;
             }
         } else {
-            sys_yield(); 
+            sys_sleep(10);
         }
     }
 }

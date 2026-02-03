@@ -36,7 +36,13 @@ void cmd_ps(const char *args) {
         int len = 0; while(list[i].name[len]) len++;
         for(int s=0; s<(16-len); s++) safe_puts(" ");
         
-        safe_puts(list[i].priority ? "1      " : "0      ");
+        char prio_str[2];
+        prio_str[0] = list[i].priority + '0'; 
+        prio_str[1] = 0;
+
+        safe_puts(prio_str); 
+        safe_puts("      ");
+        
         safe_puts(state_str); safe_puts("    ");
         safe_puts(sp_str); safe_puts("  ");
         safe_puts(list[i].state != 2 ? "-         " : wake_str);

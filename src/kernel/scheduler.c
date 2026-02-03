@@ -193,104 +193,94 @@ int scheduler_get_tasks_info(task_info_t *user_buffer, int max_count) {
  * O escalonador mantém o equilíbrio da Força entre as tarefas.
  */
 void schedule(void) {
+
+    // Se não há tarefas, nada a fazer
     if (task_count == 0) return;
 
-    // ----------------------------------------------------------------------------------
-    // FASE 1: O DESPERTAR DA FORÇA (Unblock)
-    // ----------------------------------------------------------------------------------
+    // ======================================================================================
+    // FASE 1: O GRANDE DESPERTAR 
+    // ======================================================================================
 
-    // Verifica todas as tarefas dormindo. 
-    // Se o tempo passou, elas despertam para o mundo real.
-
-    uint64_t now = hal_timer_get_cycles();
+    // Tipo aquele momento em que você acorda e pensa "será que durmi o suficiente?"
+    // Aqui a gente acorda as tasks que pediram sleep() e seu tempo expirou.
     
+    uint64_t now = hal_timer_get_cycles();
     for (int i = 0; i < task_count; i++) {
         if (tasks[i].state == TASK_BLOCKED) {
+            // "Ei, acordaaaa! Seu timer zerou!"
             if (now >= tasks[i].wake_time) {
-                tasks[i].state = TASK_READY; // Volta para a fila de prontas
+                tasks[i].state = TASK_READY; 
             }
         }
     }
 
-    // ----------------------------------------------------------------------------------
-    // FASE 2: O ESCOLHIDO (Round Robin com Prioridade)
-    // ----------------------------------------------------------------------------------
+    // ======================================================================================
+    // FASE 2: A LUTA PELA CPU (ESCALONAMENTO)
+    // ======================================================================================
 
-    // Encontrar uma tarefa READY com a maior prioridade possível.
-    // Se ninguém quiser rodar, cai na Idle Task.
-    
+    // Algoritmo: Round-Robin baseado em Prioridade (CLINT faz a preempção via Timer)
+
+    // Apenas UMA task pode rodar por vez.
+    // Regra 1: Ganha quem tiver a MAIOR prioridade.
+    // Regra 2: Em caso de empate, quem chegar primeiro na busca circular (Round Robin).
+
     task_t *best_task = NULL;
-    
-    // Começamos a busca a partir do próximo ID para garantir justiça (Round Robin).
-    // Se sempre começássemos do 0, a tarefa 0 teria vantagem injusta.
+    int max_prio_found = -1;  // Variável que registra a maior prioridade encontrada
 
+    // Ponto de partida: Não começamos sempre da task 0 (seria injusto).
+    // Começamos do ID seguinte à atual, garantindo uma certa justiça cíclica.
     int start_id = (current_task) ? (current_task->tid + 1) % task_count : 0;
-    int i = start_id;
-    
-    // Loop circular
 
-    do {
+    // Rodamos exatamente task_count vezes de forma circular
+    for (int j = 0; j < task_count; j++) {
+        int i = (start_id + j) % task_count;
 
-        // Critério 1: Tarefa deve estar Pronta ou Rodando
-
+        // Filtrando os "aptos": Só tasks READY ou RUNNING entram na luta
         if (tasks[i].state == TASK_READY || tasks[i].state == TASK_RUNNING) {
             
-            // Critério 2: Prioridade > 0 (Ignora a Idle Task por enquanto)
-            // Queremos dar chance para as tarefas úteis primeiro.
-
-            if (tasks[i].priority > 0) {
+            // - Se best_task é NULL: Pegamos o primeiro candidato que achar
+            // - Se encontramos alguém com prioridade ESTRITAMENTE MAIOR: Trocamos de candidato
+            // - Se a prioridade for IGUAL: Mantemos o primeiro que achou (ele tem direito!)
+            
+            if (best_task == NULL || tasks[i].priority > max_prio_found) {
                 best_task = &tasks[i];
-                break; // Achamos! Para a busca.
+                max_prio_found = tasks[i].priority;
             }
-
         }
-        
-        // Avança circularmente (0, 1, 2, 0, 1...)
-        i = (i + 1) % task_count;
-        
-    } while (i != start_id);
+    }
 
-    // ----------------------------------------------------------------------------------
-    // FASE 3: O GUARDIÃO 
-    // ----------------------------------------------------------------------------------
-
-    // Se best_task ainda é NULL, significa que todas as tarefas úteis estão
-    // dormindo (BLOCKED). Precisamos rodar a Idle Task (Prioridade 0).
-    
+    // Se ninguém quer rodar,
+    // Pegamos a Idle Task (confiável e prioridade 0).
     if (best_task == NULL) {
-        for (int k=0; k<task_count; k++) {
-            if (tasks[k].priority == 0) { // Identifica a Idle pela prioridade
+        for (int k = 0; k < task_count; k++) {
+            if (tasks[k].priority == 0) {
                 best_task = &tasks[k];
                 break;
             }
         }
     }
 
-    // ----------------------------------------------------------------------------------
-    // FASE 4: TRANSIÇÃO DE CONTEXTO LÓGICA
-    // ----------------------------------------------------------------------------------
+    // ======================================================================================
+    // FASE 3: O SALTO - Troca de Contexto
+    // ======================================================================================
 
-    // Define a próxima tarefa e ajusta estados:
-    //  - READY  -> RUNNING
-    //  - RUNNING (antiga) -> READY se houve preempção
-
+    // Se chegou até aqui e encontrou alguém, é hora de fazer o "context switch".
+    
     if (best_task != NULL) {
-
         next_task = best_task;
         
-        // Se ela estava apenas PRONTA, agora ela é a DONA DA CPU.
+        // Se a próxima task estava apenas PRONTA, agora vira RUNNING
         if (next_task->state == TASK_READY) {
             next_task->state = TASK_RUNNING;
         }
         
-        // O current_task deixa de ser RUNNING?
-        // Sim, se ele não bloqueou, ele volta para READY (Preempção).
+        // Se a task ATUAL está rodando e vai ser desbancada, volta para PRONTA
         if (current_task && current_task->state == TASK_RUNNING && current_task != next_task) {
              current_task->state = TASK_READY;
         }
 
     }
-
+    
 }
 
 // ======================================================================================
