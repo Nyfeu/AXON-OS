@@ -20,6 +20,10 @@
 #define SYS_PEEK        7   // Lê endereço de memória
 #define SYS_POKE        8   // Escreve endereço de memória
 #define SYS_HEAP_INFO   9   // Dump do Heap
+#define SYS_MALLOC      10  // Para alocar memória segura
+#define SYS_FREE        11  // Para liberar
+#define SYS_SUSPEND     12  // Pausar processo
+#define SYS_RESUME      13  // Retomar processo
 
 // ==========================================================================================================
 // Informações do Processo
@@ -235,6 +239,34 @@ static inline void sys_poke(uint32_t addr, uint32_t val) {
 // Dump do Heap
 static inline void sys_heap_info(void) {
     asm volatile ("li a7, %0; ecall" :: "i"(SYS_HEAP_INFO) : "a7", "memory");
+}
+
+// Pausa processo pelo PID
+static inline int sys_suspend(uint32_t pid) {
+    int ret; asm volatile ("mv a0, %1; li a7, %2; ecall; mv %0, a0" : "=r"(ret) : "r"(pid), "i"(SYS_SUSPEND) : "a0", "a7"); return ret;
+}
+
+// Retoma processo pelo PID
+static inline int sys_resume(uint32_t pid) {
+    int ret; asm volatile ("mv a0, %1; li a7, %2; ecall; mv %0, a0" : "=r"(ret) : "r"(pid), "i"(SYS_RESUME) : "a0", "a7"); return ret;
+}
+
+// Aloca memória no Heap do Kernel
+static inline void* sys_malloc(uint32_t size) {
+    void* ret; asm volatile ("mv a0, %1; li a7, %2; ecall; mv %0, a0" : "=r"(ret) : "r"(size), "i"(SYS_MALLOC) : "a0", "a7"); return ret;
+}
+
+
+// Libera memória alocada no Heap do Kernel
+static inline void sys_free(void* ptr) {
+    asm volatile (
+        "mv a0, %0\n"       // Coloca o endereço em a0
+        "li a7, %1\n"       // ID SYS_FREE em a7
+        "ecall"
+        : 
+        : "r"(ptr), "i"(SYS_FREE) 
+        : "a0", "a7", "memory"
+    );
 }
 
 #endif /* SYSCALL_H */

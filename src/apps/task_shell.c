@@ -84,7 +84,11 @@ static const shell_cmd_t shell_commands[] = {
     {"memtest", cmd_memtest},
     {"heap",    cmd_heap},
     {"peek",    cmd_peek},
-    {"poke",    cmd_poke}
+    {"poke",    cmd_poke},
+    {"alloc",   cmd_alloc}, 
+    {"stop",    cmd_stop},  
+    {"resume",  cmd_resume},
+    {"free",    cmd_free}
 };
 
 #define CMD_COUNT (sizeof(shell_commands) / sizeof(shell_cmd_t))

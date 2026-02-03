@@ -81,3 +81,25 @@ void cmd_poke(const char *args) {
     sys_poke(addr, val);
     safe_puts("Written.\n");
 }
+
+void cmd_free(const char *args) {
+    if (!args || !*args) {
+        safe_puts("Usage: free <addr>\n");
+        return;
+    }
+
+    // Usa a mesma função auxiliar de hex que usamos no peek/poke
+    // (Assumindo que strtoul_hex ou similar está disponível aqui)
+    uint32_t addr = strtoul_hex(args);
+    
+    // Chama o Kernel
+    sys_free((void*)addr);
+    
+    safe_puts("Freed block at 0x");
+    
+    // Feedback visual (opcional)
+    char buf[12]; 
+    val_to_hex(addr, buf); 
+    safe_puts(buf);
+    safe_puts("\n");
+}

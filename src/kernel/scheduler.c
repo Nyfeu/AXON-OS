@@ -292,3 +292,24 @@ void schedule(void) {
     }
 
 }
+
+// ======================================================================================
+// FUNÇÕES DE CONTROLE DE TAREFAS
+// ======================================================================================
+
+// Pausa a tarefa com o PID especificado (SUSPENDED)
+int scheduler_suspend(uint32_t pid) {
+    if (pid >= task_count || pid == 0) return -1; // Não pausa IDLE
+    tasks[pid].state = TASK_SUSPENDED;
+    if (current_task->tid == pid) schedule(); // Se pausou a si mesmo, cede a vez
+    return 0;
+}
+
+// Continua a tarefa com o PID especificado (SUSPENDED -> READY)
+int scheduler_resume(uint32_t pid) {
+    if (pid >= task_count) return -1;
+    if (tasks[pid].state == TASK_SUSPENDED) {
+        tasks[pid].state = TASK_READY;
+    }
+    return 0;
+}

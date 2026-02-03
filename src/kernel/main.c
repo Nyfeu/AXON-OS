@@ -228,6 +228,27 @@ void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
                     extern void kheap_dump(void); 
                     kheap_dump();
                     break;
+
+                case SYS_MALLOC:
+                    // Chama kmalloc e retorna o endereço seguro em a0
+                    frame->a0 = (uint32_t)kmalloc(frame->a0);
+                    break;
+
+                case SYS_FREE:
+                    extern void kfree(void* ptr);
+                    // O endereço a ser liberado vem em a0
+                    kfree((void*)frame->a0);
+                    break;
+
+                case SYS_SUSPEND:
+                    extern int scheduler_suspend(uint32_t pid);
+                    frame->a0 = scheduler_suspend(frame->a0);
+                    break;
+
+                case SYS_RESUME:
+                    extern int scheduler_resume(uint32_t pid);
+                    frame->a0 = scheduler_resume(frame->a0);
+                    break;
                     
                 default:
                     hal_uart_puts("[KERNEL] Syscall desconhecida.\n\r");
