@@ -129,6 +129,111 @@ void int_to_str(int val, char* buf) {
 }
 
 // ======================================================================================
+// IMPLEMENTAÇÃO DOS COMANDOS DO SHELL
+// ======================================================================================
+
+void cmd_help(void) {
+    safe_puts(SH_BOLD "\n  AVAILABLE COMMANDS\n" SH_RESET);
+    safe_puts(SH_GRAY "  ------------------------------------------\n" SH_RESET);
+    safe_puts("  " SH_CYAN "help   " SH_RESET " Show this information\n");
+    safe_puts("  " SH_CYAN "clear  " SH_RESET " Clear screen (keeps status bar)\n");
+    safe_puts("  " SH_CYAN "ps     " SH_RESET " Show process status\n");
+    safe_puts("  " SH_CYAN "memtest" SH_RESET " Test Heap Allocation\n");
+    safe_puts("  " SH_CYAN "reboot " SH_RESET " Reboot the system\n");
+    safe_puts("  " SH_CYAN "panic  " SH_RESET " Trigger a Kernel Panic\n\n");
+}
+
+void cmd_clear(void) {
+    // Limpa a tela mas move o cursor para a linha 3 (pulando a barra de status)
+    safe_puts("\033[2J\033[3;1H"); 
+    safe_puts(SH_CYAN SH_BOLD "   AXON RTOS " SH_RESET SH_GRAY " v0.1.0-alpha\n\n" SH_RESET);
+}
+
+void cmd_reboot(void) {
+    safe_puts("Rebooting...\n");
+    sys_sleep(500);
+    extern void _start(void);
+    _start();
+}
+
+void cmd_panic(void) {
+    safe_puts("Triggering Illegal Instruction...\n");
+    asm volatile(".word 0xFFFFFFFF");
+}
+
+void cmd_ps(void) {
+    task_info_t list[8]; 
+    int count = sys_get_tasks(list, 8);
+    
+    safe_puts(SH_BOLD "\n  PID   NAME            PRIO   STATE      SP          WAKE_TIME\n" SH_RESET);
+    safe_puts(SH_GRAY "  ----------------------------------------------------------------\n" SH_RESET);
+    
+    for (int i = 0; i < count; i++) {
+        char pid_str[4]; pid_str[0] = list[i].id + '0'; pid_str[1] = 0;
+        
+        const char *state_str;
+        switch(list[i].state) {
+            case 0: state_str = SH_GREEN "READY  " SH_RESET; break;
+            case 1: state_str = SH_CYAN  "RUNNING" SH_RESET; break;
+            case 2: state_str = SH_YELLOW "WAITING" SH_RESET; break;
+            default: state_str = "UNKNOWN"; break;
+        }
+
+        char sp_str[12], wake_str[12];
+        val_to_hex(list[i].sp, sp_str);
+        val_to_hex((uint32_t)list[i].wake_time, wake_str);
+
+        safe_puts("  "); safe_puts(pid_str); safe_puts("     ");
+        safe_puts(list[i].name);
+        
+        // Alinhamento
+        int len = 0; while(list[i].name[len]) len++;
+        for(int s=0; s<(16-len); s++) safe_puts(" ");
+        
+        safe_puts(list[i].priority ? "1      " : "0      ");
+        safe_puts(state_str); safe_puts("    ");
+        safe_puts(sp_str); safe_puts("  ");
+        safe_puts(list[i].state != 2 ? "-         " : wake_str);
+        safe_puts("\n");
+    }
+    safe_puts("\n");
+}
+
+void cmd_memtest(void) {
+    safe_puts("Allocating 128 bytes on Heap...\n");
+    char *ptr = (char*)kmalloc(128);
+    if (ptr) {
+        char addr_str[12]; val_to_hex((uint32_t)ptr, addr_str);
+        safe_puts("Success! Addr: "); safe_puts(addr_str); safe_puts("\n");
+        kfree(ptr);
+    } else {
+        safe_puts(SH_RED "Malloc failed (OOM)!\n" SH_RESET);
+    }
+}
+
+// ======================================================================================
+// TABELA DE COMANDOS (Command Registry)
+// ======================================================================================
+
+typedef struct {
+
+    const char *name;
+    void (*func)(void);
+
+} shell_cmd_t;
+
+static const shell_cmd_t shell_commands[] = {
+    {"help",    cmd_help},
+    {"clear",   cmd_clear},
+    {"reboot",  cmd_reboot},
+    {"panic",   cmd_panic},
+    {"ps",      cmd_ps},
+    {"memtest", cmd_memtest}
+};
+
+#define CMD_COUNT (sizeof(shell_commands) / sizeof(shell_cmd_t))
+
+// ======================================================================================
 //  ESPAÇO DO USUÁRIO 
 // ======================================================================================
 //
@@ -254,162 +359,51 @@ void task_shell(void) {
     char cmd_buf[CMD_MAX_LEN];
     int cmd_idx = 0;
 
+    // CORREÇÃO 1: Não limpar a tela no boot. 
+    // Apenas pulamos uma linha para separar dos logs do kernel.
+    safe_puts("\n"); 
     show_prompt();
     
     while (1) {
-
         if (cbuf_pop(&rx_buffer, &c)) {
             
-            // 1. CTRL+L (Clear)
-            if (c == 12) {
-                clear_screen();
-                show_prompt();
-                cmd_buf[cmd_idx] = 0;
-                safe_puts(cmd_buf);
+            // --- CTRL+L (Form Feed) ---
+            // CORREÇÃO 2: Reimplementação do atalho de limpar tela mantendo o texto
+            if (c == 12) { 
+                cmd_clear();       // Limpa a tela (preservando barra de status)
+                show_prompt();     // Redesenha "root@axon:~$"
+                
+                // Redesenha o que o usuário já tinha digitado
+                if (cmd_idx > 0) {
+                    cmd_buf[cmd_idx] = 0; // Garante terminador nulo
+                    safe_puts(cmd_buf);
+                }
             }
             
-            // 2. ENTER (Use 'else if' para não cair nos outros!)
+            // --- ENTER ---
             else if (c == '\r') {
                 cmd_buf[cmd_idx] = 0;
                 safe_puts("\n");
 
                 if (cmd_idx > 0) {
-
-                    // --- COMANDO HELP ---
-                    if (sys_strcmp(cmd_buf, "help") == 0) {
-                        safe_puts(SH_BOLD "\n  AVAILABLE COMMANDS\n" SH_RESET);
-                        safe_puts(SH_GRAY "  ------------------------------------------\n" SH_RESET);
-                        safe_puts("  " SH_CYAN "help  " SH_RESET "  Show this information\n");
-                        safe_puts("  " SH_CYAN "clear " SH_RESET "  Clear the terminal screen\n");
-                        safe_puts("  " SH_CYAN "ps    " SH_RESET "  Show process status (Tasks)\n");
-                        safe_puts("  " SH_CYAN "reboot" SH_RESET "  Reboot the system\n");
-                        safe_puts("  " SH_CYAN "panic " SH_RESET "  Trigger a Kernel Panic test\n");
-                        safe_puts("\n");
-                    }
-
-                    // --- COMANDO CLEAR ---
-                    else if (sys_strcmp(cmd_buf, "clear") == 0) {
-                        clear_screen();
-                    }
-
-                    // --- COMANDO REBOOT ---
-                    else if (sys_strcmp(cmd_buf, "reboot") == 0) {
-                        safe_puts("Rebooting...\n");
-                        sys_sleep(500); // Aqui pode usar sys_sleep (estamos em User Mode)
-                        _start();
-                    }
-
-                    // --- COMANDO PANIC ---
-                    else if (sys_strcmp(cmd_buf, "panic") == 0) {
-                        safe_puts("Triggering Illegal Instruction...\n");
-                        asm volatile(".word 0xFFFFFFFF");
-                    }
-
-                    // --- COMANDO PS (Process Status) ---
-                    else if (sys_strcmp(cmd_buf, "ps") == 0) {
-                        task_info_t list[8]; 
-                        int count = sys_get_tasks(list, 8);
-                        
-                        // Cabeçalho expandido
-                        safe_puts(SH_BOLD "\n  PID   NAME            PRIO   STATE      SP          WAKE_TIME\n" SH_RESET);
-                        safe_puts(SH_GRAY "  ----------------------------------------------------------------\n" SH_RESET);
-                        
-                        for (int i = 0; i < count; i++) {
-                            // 1. PID
-                            char pid_str[4];
-                            pid_str[0] = list[i].id + '0'; 
-                            pid_str[1] = 0;
-                            
-                            // 2. STATE
-                            const char *state_str;
-                            switch(list[i].state) {
-                                case 0: state_str = SH_GREEN "READY  " SH_RESET; break;
-                                case 1: state_str = SH_CYAN  "RUNNING" SH_RESET; break;
-                                case 2: state_str = SH_YELLOW "WAITING" SH_RESET; break;
-                                default: state_str = "UNKNOWN"; break;
-                            }
-
-                            // 3. SP (Stack Pointer) em Hex
-                            char sp_str[12];
-                            val_to_hex(list[i].sp, sp_str);
-
-                            // 4. Wake Time (apenas os 32 bits baixos para caber na tela)
-                            char wake_str[12];
-                            val_to_hex((uint32_t)list[i].wake_time, wake_str);
-
-                            // --- IMPRESSÃO FORMATADA ---
-                            safe_puts("  ");
-                            safe_puts(pid_str);
-                            safe_puts("     ");
-                            
-                            // Nome alinhado
-                            safe_puts(list[i].name);
-                            int len = 0; while(list[i].name[len]) len++;
-                            for(int s=0; s<(16-len); s++) safe_puts(" ");
-                            
-                            // Prioridade
-                            if (list[i].priority == 0) safe_puts("0      ");
-                            else safe_puts("1      ");
-                            
-                            // Estado
-                            safe_puts(state_str);
-                            safe_puts("    ");
-                            
-                            // SP
-                            safe_puts(sp_str);
-                            safe_puts("  ");
-                            
-                            // Wake Time (Se for 0 ou muito antigo, mostra tracinho)
-                            if (list[i].state != 2) safe_puts("-         ");
-                            else safe_puts(wake_str);
-                            
-                            safe_puts("\n");
-                        }
-                        safe_puts("\n");
-                    }
-
-                    // -- COMANDO MEMTEST ---
-                    else if (sys_strcmp(cmd_buf, "memtest") == 0) {
-                        safe_puts("Allocating 128 bytes on Heap...\n");
-                        
-                        // 1. Aloca
-                        char *ptr = (char*)kmalloc(128);
-                        
-                        if (ptr) {
-                            safe_puts("Success! Addr: ");
-                            // Imprime endereço 
-                            char addr_str[12];
-                            val_to_hex((uint32_t)ptr, addr_str);
-                            safe_puts(addr_str);
-                            safe_puts("\n");
-                            
-                            // 2. Usa (Escreve na memória)
-                            ptr[0] = 'H'; ptr[1] = 'e'; ptr[2] = 'y'; ptr[3] = '!'; ptr[4] = 0;
-                            safe_puts("Data written: "); safe_puts(ptr); safe_puts("\n");
-                            
-                            // 3. Libera
-                            safe_puts("Freeing memory...\n\n");
-                            kfree(ptr);
-                        } else {
-                            safe_puts(SH_RED "Malloc failed (OOM)!\n\n" SH_RESET);
+                    int found = 0;
+                    for (int i = 0; i < CMD_COUNT; i++) {
+                        if (sys_strcmp(cmd_buf, shell_commands[i].name) == 0) {
+                            shell_commands[i].func();
+                            found = 1;
+                            break;
                         }
                     }
-
-                    // -- COMANDO DESCONHECIDO ---
-                    else {
-                        safe_puts("Unknown: ");
-                        safe_puts(cmd_buf);
-                        safe_puts("\n");
+                    if (!found) {
+                        safe_puts(SH_RED "Unknown command: " SH_RESET);
+                        safe_puts(cmd_buf); safe_puts("\n");
                     }
-                    
                 }
-
                 show_prompt();
                 cmd_idx = 0;
-
             }
             
-            // 3. BACKSPACE
+            // --- BACKSPACE ---
             else if (c == 127 || c == '\b') {
                 if (cmd_idx > 0) {
                     safe_puts("\b \b");
@@ -417,13 +411,11 @@ void task_shell(void) {
                 }
             }
             
-            // 4. CARACTERE NORMAL (Só entra aqui se não foi nenhum dos acima)
-            else {
-                if (cmd_idx < (CMD_MAX_LEN - 1) && c >= 32 && c <= 126) {
-                    char s[2] = { (char)c, 0 };
-                    safe_puts(s);
-                    cmd_buf[cmd_idx++] = c;
-                }
+            // --- CARACTERES IMPRIMÍVEIS ---
+            else if (cmd_idx < (CMD_MAX_LEN - 1) && c >= 32 && c <= 126) {
+                char s[2] = { (char)c, 0 };
+                safe_puts(s);
+                cmd_buf[cmd_idx++] = c;
             }
         } else {
             sys_yield(); 
