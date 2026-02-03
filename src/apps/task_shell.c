@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "sys/syscall.h"
 #include "kernel/mutex.h"
 #include "hal/hal_uart.h"
@@ -71,7 +72,7 @@ void clear_screen(void) {
 
 typedef struct {
     const char *name;
-    void (*func)(void);
+    void (*func)(const char *args); 
 } shell_cmd_t;
 
 static const shell_cmd_t shell_commands[] = {
@@ -80,7 +81,10 @@ static const shell_cmd_t shell_commands[] = {
     {"reboot",  cmd_reboot},
     {"panic",   cmd_panic},
     {"ps",      cmd_ps},
-    {"memtest", cmd_memtest}
+    {"memtest", cmd_memtest},
+    {"heap",    cmd_heap},
+    {"peek",    cmd_peek},
+    {"poke",    cmd_poke}
 };
 
 #define CMD_COUNT (sizeof(shell_commands) / sizeof(shell_cmd_t))
@@ -90,6 +94,7 @@ static const shell_cmd_t shell_commands[] = {
 // ======================================================================================
 
 void task_shell(void) {
+
     uint8_t c;
     char cmd_buf[CMD_MAX_LEN];
     int cmd_idx = 0;
@@ -98,17 +103,21 @@ void task_shell(void) {
     show_prompt();
     
     while (1) {
+        
         if (cbuf_pop(&rx_buffer, &c)) {
             
             // --- CTRL+L (Form Feed) ---
             if (c == 12) { 
-                cmd_clear();
+                
+                safe_puts("\033[2J\033[H\033[3;0H");
+                safe_puts(SH_CYAN SH_BOLD "   AXON RTOS " SH_RESET SH_GRAY " v0.1.0-alpha\n\n" SH_RESET);
                 show_prompt();
                 
                 if (cmd_idx > 0) {
                     cmd_buf[cmd_idx] = 0;
                     safe_puts(cmd_buf);
                 }
+
             }
             
             // --- ENTER ---
@@ -117,17 +126,40 @@ void task_shell(void) {
                 safe_puts("\n");
 
                 if (cmd_idx > 0) {
+                    
+                    // 1. Separação de Comando e Argumentos
+                    char *cmd_name = cmd_buf;
+                    char *args = NULL;
+
+                    // Procura o primeiro espaço
+                    for (int k = 0; cmd_buf[k]; k++) {
+                        if (cmd_buf[k] == ' ') {
+                            cmd_buf[k] = 0;         // Corta a string aqui (terminador nulo)
+                            args = &cmd_buf[k + 1]; // O resto são argumentos
+                            
+                            // Pula espaços extras no início dos argumentos
+                            while (*args == ' ') args++;
+                            if (*args == 0) args = NULL; // Se só tinha espaços, args é NULL
+                            
+                            break;
+                        }
+                    }
+
+                    // 2. Busca e Execução
                     int found = 0;
                     for (int i = 0; i < CMD_COUNT; i++) {
-                        if (sys_strcmp(cmd_buf, shell_commands[i].name) == 0) {
-                            shell_commands[i].func();
+                        // Compara apenas o nome (agora isolado pelo \0 inserido acima)
+                        if (sys_strcmp(cmd_name, shell_commands[i].name) == 0) {
+                            // CORREÇÃO: Passa 'args' para a função!
+                            shell_commands[i].func(args);
                             found = 1;
                             break;
                         }
                     }
+
                     if (!found) {
                         safe_puts(SH_RED "Unknown command: " SH_RESET);
-                        safe_puts(cmd_buf); safe_puts("\n");
+                        safe_puts(cmd_name); safe_puts("\n");
                     }
                 }
                 show_prompt();

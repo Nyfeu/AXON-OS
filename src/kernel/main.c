@@ -104,6 +104,9 @@ void task_idle(void) {
 
 void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
 
+    // Ponteiro para o contexto salvo da tarefa
+    context_t *frame = (context_t *)ctx;
+
     // Bit mais significativo define se é Interrupção (1) ou Exceção (0)
     int is_interrupt = (mcause >> 31);
     int cause_code = mcause & 0x7FFFFFFF; // Remove o bit de sinal
@@ -207,6 +210,23 @@ void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
                         // Chama a função do scheduler e retorna a contagem em a0
                         ctx[9] = scheduler_get_tasks_info(buf, max); 
                     }
+                    break;
+
+                case SYS_PEEK:
+                    // Lê da memória física e escreve no registrador a0 salvo na pilha
+                    // Quando der mret, a0 terá esse valor.
+                    // Cast para (void*) ou endereço numérico direto
+                    frame->a0 = *(volatile uint32_t*)(frame->a0);
+                    break;
+
+                case SYS_POKE:
+                    // Escreve o valor (a1) no endereço (a0)
+                    *(volatile uint32_t*)(frame->a0) = frame->a1;
+                    break;
+
+                case SYS_HEAP_INFO:
+                    extern void kheap_dump(void); 
+                    kheap_dump();
                     break;
                     
                 default:

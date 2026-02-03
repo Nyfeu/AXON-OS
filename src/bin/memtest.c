@@ -5,7 +5,9 @@
 // COMANDO: MEMTEST
 // ======================================================================================
 
-void cmd_memtest(void) {
+void cmd_memtest(const char *args) {
+    (void)args; // Ignora os argumentos
+    
     safe_puts("Allocating 128 bytes on Heap...\n");
     char *ptr = (char*)kmalloc(128);
     if (ptr) {

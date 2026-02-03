@@ -4,7 +4,10 @@
 // COMANDO: PS (Process Status)
 // ======================================================================================
 
-void cmd_ps(void) {
+void cmd_ps(const char *args) {
+
+    (void)args; // Ignora os argumentos
+
     task_info_t list[8]; 
     int count = sys_get_tasks(list, 8);
     
@@ -36,7 +39,11 @@ void cmd_ps(void) {
         safe_puts(state_str); safe_puts("    ");
         safe_puts(sp_str); safe_puts("  ");
         safe_puts(list[i].state != 2 ? "-         " : wake_str);
+
         safe_puts("\n");
+        
     }
+
     safe_puts("\n");
+
 }

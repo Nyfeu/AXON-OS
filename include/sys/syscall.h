@@ -11,12 +11,15 @@
 // Estes números são o "código do pedido". O Kernel usa um switch/case no 
 // trap_handler para saber qual serviço executar.
 
-#define SYS_YIELD     1   // Ceder a CPU voluntariamente
-#define SYS_WRITE     2   // Escrever no console (UART)
-#define SYS_SLEEP     3   // Dormir por N milissegundos
-#define SYS_LOCK      4   // Tentar pegar a chave
-#define SYS_UNLOCK    5   // Devolver a chave
-#define SYS_GET_TASKS 6   // Informações das tasks no sistema
+#define SYS_YIELD       1   // Ceder a CPU voluntariamente
+#define SYS_WRITE       2   // Escrever no console (UART)
+#define SYS_SLEEP       3   // Dormir por N milissegundos
+#define SYS_LOCK        4   // Tentar pegar a chave
+#define SYS_UNLOCK      5   // Devolver a chave
+#define SYS_GET_TASKS   6   // Informações das tasks no sistema
+#define SYS_PEEK        7   // Lê endereço de memória
+#define SYS_POKE        8   // Escreve endereço de memória
+#define SYS_HEAP_INFO   9   // Dump do Heap
 
 // ==========================================================================================================
 // Informações do Processo
@@ -199,6 +202,39 @@ static inline int sys_get_tasks(task_info_t *buffer, int max_count) {
         : "a0", "a1", "a7", "memory"
     );
     return ret;
+}
+
+// Lê 32 bits de um endereço físico
+static inline uint32_t sys_peek(uint32_t addr) {
+    uint32_t val;
+    asm volatile (
+        "mv a0, %1\n"
+        "li a7, %2\n"
+        "ecall\n"
+        "mv %0, a0"
+        : "=r"(val) 
+        : "r"(addr), "i"(SYS_PEEK) 
+        : "a0", "a7", "memory"
+    );
+    return val;
+}
+
+// Escreve 32 bits em um endereço físico
+static inline void sys_poke(uint32_t addr, uint32_t val) {
+    asm volatile (
+        "mv a0, %0\n"
+        "mv a1, %1\n"
+        "li a7, %2\n"
+        "ecall"
+        : 
+        : "r"(addr), "r"(val), "i"(SYS_POKE) 
+        : "a0", "a1", "a7", "memory"
+    );
+}
+
+// Dump do Heap
+static inline void sys_heap_info(void) {
+    asm volatile ("li a7, %0; ecall" :: "i"(SYS_HEAP_INFO) : "a7", "memory");
 }
 
 #endif /* SYSCALL_H */
