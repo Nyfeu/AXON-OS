@@ -25,6 +25,7 @@
 #define CLINT_BASE_ADDR     0x50000000
 #define PLIC_BASE_ADDR      0x60000000
 #define NPU_BASE_ADDR       0x90000000
+#define GPIO_BASE           0x20000000
 
 /* ============================================================================================================== */
 /* UART DEFINITIONS                                                                                               */

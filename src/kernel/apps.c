@@ -7,6 +7,7 @@
 #include "../../include/circular_buffer.h"
 #include "../../include/logger.h"
 #include "../../include/mm.h"
+#include "../../include/hal_gpio.h"
 
 // Mutex para uso da UART
 mutex_t uart_mutex;
@@ -94,10 +95,9 @@ void show_prompt(void) {
 
 void clear_screen(void) {
 
-    safe_puts("\033[2J\033[H");
+    safe_puts("\033[2J\033[H\033[3;0H");
     
-    // Banner Bonito
-    safe_puts("\n");
+    // Banner do sistema
     safe_puts(SH_CYAN SH_BOLD);
     safe_puts("   AXON RTOS ");
     safe_puts(SH_RESET SH_GRAY " v0.1.0-alpha (RISC-V 32)\n" SH_RESET);
@@ -115,6 +115,19 @@ void val_to_hex(uint32_t val, char* out_buf) {
     out_buf[10] = 0; // Null terminator
 }
 
+void int_to_str(int val, char* buf) {
+    // Conversão simples para inteiros positivos pequenos (0-99)
+    if (val < 10) {
+        buf[0] = '0';
+        buf[1] = val + '0';
+        buf[2] = 0;
+    } else {
+        buf[0] = (val / 10) + '0';
+        buf[1] = (val % 10) + '0';
+        buf[2] = 0;
+    }
+}
+
 // ======================================================================================
 //  ESPAÇO DO USUÁRIO 
 // ======================================================================================
@@ -125,33 +138,114 @@ void val_to_hex(uint32_t val, char* out_buf) {
 //
 // ======================================================================================
 
-// Tarefa A: Um cidadão comportado
+// Tarefa A: Controla os LEDs
 void task_a(void) {
+
+    uint32_t counter = 0;
+    
+    // Inicialização do GPIO
+    hal_gpio_init();
+
     while (1) {
 
-        // Pede para imprimir a string
-        // safe_puts("Hello, ");
+        // 1. Atualiza Hardware (Funciona na FPGA)
+        hal_gpio_write(counter);
+        
+        // 2. Feedback Visual no QEMU
+        // Verifica o bit 0 do contador para simular um LED piscando
+        int led_on = counter % 2; 
+        
+        // Sequência ANSI:
+        // \0337      -> Salva Posição do Cursor e Atributos (DEC Save Cursor)
+        // \033[1;70H -> Move cursor para Linha 1, Coluna 60 (Canto superior direito)
 
-        // Pede ao kernel para dormir (Syscall 3).
-        // Isso coloca a tarefa em estado BLOCKED e libera a CPU imediatamente.
+        // Imprime o status
+        // \0338      -> Restaura Posição do Cursor e Atributos (DEC Restore Cursor)
+        
+        if (led_on) {
+            // [LED: (*)] em Verde
+            safe_puts("\0337\033[1;70H\033[37m[LED: \033[1;32m(*)\033[0;37m]\0338");
+        } else {
+            // [LED: ( )] em Vermelho/Apagado
+            safe_puts("\0337\033[1;70H\033[37m[LED: \033[1;31m( )\033[0;37m]\0338");
+        }
+
+        counter++;
+        
+        // Delay para a tarefa não rodar rápido demais
         sys_sleep(500);
 
     }
 
 }
 
-// Tarefa B: Outro cidadão comportado
+// Tarefa B: Exibe Uptime e Spinner
 void task_b(void) {
-    while (1) {
-        
-        // Pede para imprimir a string
-        // safe_puts("World!\n\r");
 
-        // Pede ao kernel para dormir (Syscall 3).
-        // Isso coloca a tarefa em estado BLOCKED e libera a CPU imediatamente.
-        sys_sleep(500);
+    // Contadores de tempo
+    int seconds = 0;
+    int minutes = 0;
+
+    // Buffers para formatação
+    char s_str[4], m_str[4];
+    
+    // Spinner para mostrar atividade
+    const char spinner[] = "|/-\\";
+    int spin_idx = 0;
+
+    while (1) {
+
+        // Formata o tempo
+        int_to_str(minutes, m_str);
+        int_to_str(seconds, s_str);
+
+        // Monta a barra de status na Linha 1, Coluna 1
+        // Formato: Uptime: MM:SS | <spinner>
+        
+        // Sequência ANSI:
+        // \0337      = Save Cursor
+        // \033[1;1H  = Move to 1,1
+        // Imprime texto
+        // \0338      = Restore Cursor
+        
+        // Pede a chave da UART (mutex)
+        sys_mutex_lock(&uart_mutex); 
+        
+        // Move o cursor para o topo
+        sys_puts("\0337\033[1;1H"); 
+
+        // Exibe a barra de status (uptime + spinner)
+        sys_puts("Uptime: ");
+        sys_puts(m_str); sys_puts(":"); sys_puts(s_str);
+        sys_puts("  ["); 
+        char spin_char[2] = { spinner[spin_idx], 0 };
+        sys_puts(SH_CYAN); sys_puts(spin_char); sys_puts(SH_RESET);
+        sys_puts("]");
+
+        // Volta para onde o usuário estava digitando
+        sys_puts("\0338");
+        
+        // Devolve a chave da UART (mutex)
+        sys_mutex_unlock(&uart_mutex);
+
+        // Atualiza contadores
+        spin_idx = (spin_idx + 1) % 4;
+        
+        // Rodando a cada 250ms para o spinner girar
+        // A cada 4 ciclos (1000ms), incrementa o segundo
+        if (spin_idx == 0) {
+            seconds++;
+            if (seconds >= 60) {
+                seconds = 0;
+                minutes++;
+            }
+        }
+
+        // A tarefa dorme por 250 ms
+        sys_sleep(250);
 
     }
+    
 }
 
 // Tarefa SHELL: Reponsável por leitura do teclado

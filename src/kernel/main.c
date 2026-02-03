@@ -253,8 +253,8 @@ void kernel_main() {
     // FASE 1: Inicialização de Hardware (Drivers)
     // ----------------------------------------------------------------------------------
     
-    hal_uart_init();                  // Inicializa UART
-    hal_uart_puts("\033[2J\033[H");   // Limpar tela
+    hal_uart_init();                           // Inicializa UART
+    hal_uart_puts("\033[2J\033[H\033[2;0H");   // Limpar tela
 
     // Mensagem com ASCII ART BANNER
     hal_uart_puts(ANSI_CYAN ANSI_BOLD);
