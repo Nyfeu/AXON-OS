@@ -295,6 +295,7 @@ void kernel_main() {
     // ----------------------------------------------------------------------------------
     
     hal_uart_init();                           // Inicializa UART
+    hal_uart_puts("\033[2J\033[3;r\033[3;1H"); // Configura terminal
     hal_uart_puts("\033[2J\033[H\033[2;0H");   // Limpar tela
 
     // Mensagem com ASCII ART BANNER

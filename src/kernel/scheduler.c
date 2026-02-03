@@ -299,7 +299,7 @@ void schedule(void) {
 
 // Pausa a tarefa com o PID especificado (SUSPENDED)
 int scheduler_suspend(uint32_t pid) {
-    if (pid >= task_count || pid == 0) return -1; // Não pausa IDLE
+    if (tasks[pid].priority == 0) return -1; // Não pode pausar a Idle
     tasks[pid].state = TASK_SUSPENDED;
     if (current_task->tid == pid) schedule(); // Se pausou a si mesmo, cede a vez
     return 0;

@@ -24,8 +24,7 @@ typedef enum {
     TASK_READY,      // Pronta para rodar (está na fila aguardando a CPU)
     TASK_RUNNING,    // Está rodando neste exato momento (posse da CPU)
     TASK_BLOCKED,    // Dormindo (Sleep) ou esperando recurso (Mutex/IO)
-    TASK_SUSPENDED,  // Pausado, mas existe
-    TASK_TERMINATED  // Morto, pronto para limpeza
+    TASK_SUSPENDED   // Pausado, mas existe
 } task_state_t;
 
 // ============================================================================
