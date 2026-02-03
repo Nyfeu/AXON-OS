@@ -339,15 +339,15 @@ void kernel_main() {
     scheduler_init();
     
     // Cria as tarefas do usuário (Pilha, Contexto, TCB)
-    task_create(task_a, "Task A", 1);
-    task_create(task_b, "Task B", 1);
-    task_create(task_shell, "Shell", 2);
+    task_create(task_leds, "Task LEDs", 1);
+    task_create(task_monitor, "Task Monitor", 1);
+    task_create(task_shell, "Task Shell", 2);
     
     // Cria a tarefa de background (obrigatória para o scheduler não falhar)
     task_create(task_idle, "Idle", 0);
     
     hal_uart_putc('\n');
-    hal_uart_puts(ANSI_GREEN ">>> AXON KERNEL IS READY. <<<\n\n\r" ANSI_RESET);
+    hal_uart_puts(ANSI_GREEN ">>> AXON KERNEL IS READY <<<\n\r" ANSI_RESET);
     
     // ----------------------------------------------------------------------------------
     // FASE 4: Agendamento das Tarefas

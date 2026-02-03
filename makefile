@@ -23,23 +23,32 @@ OBJ_DIR   = $(BUILD_DIR)/obj
 SRCS_COMMON_C = $(wildcard src/kernel/*.c)
 SRCS_COMMON_S = src/bsp/start.s src/kernel/trap.s
 
-# 2. Fontes Específicos (Drivers)
+# 2. Fontes de Aplicações (Tasks e Comandos)
+# Estes arquivos são usados tanto no QEMU quanto na FPGA
+SRCS_APPS_C = $(wildcard src/apps/*.c)
+SRCS_BIN_C  = $(wildcard src/bin/*.c)
+
+# 3. Fontes Específicos (Drivers)
 # Usamos 'wildcard' para pegar tudo que está dentro das pastas novas
 DRIVERS_QEMU = $(wildcard src/drivers/qemu/*.c)
 DRIVERS_FPGA = $(wildcard src/drivers/fpga/*.c)
 
-# 3. Listas Finais de Objetos
+# 4. Listas Finais de Objetos
 # A lógica abaixo cria caminhos espelhados em build/obj/qemu/src/...
 # Nota: Colocamos SRCS_COMMON_S (Assembly) PRIMEIRO para garantir start.o no início
 
 # --- Lista QEMU ---
 OBJS_QEMU  = $(patsubst %.s, $(OBJ_DIR)/qemu/%.o, $(SRCS_COMMON_S))
 OBJS_QEMU += $(patsubst %.c, $(OBJ_DIR)/qemu/%.o, $(SRCS_COMMON_C))
+OBJS_QEMU += $(patsubst %.c, $(OBJ_DIR)/qemu/%.o, $(SRCS_APPS_C))
+OBJS_QEMU += $(patsubst %.c, $(OBJ_DIR)/qemu/%.o, $(SRCS_BIN_C))
 OBJS_QEMU += $(patsubst %.c, $(OBJ_DIR)/qemu/%.o, $(DRIVERS_QEMU))
 
 # --- Lista FPGA ---
 OBJS_FPGA  = $(patsubst %.s, $(OBJ_DIR)/fpga/%.o, $(SRCS_COMMON_S))
 OBJS_FPGA += $(patsubst %.c, $(OBJ_DIR)/fpga/%.o, $(SRCS_COMMON_C))
+OBJS_FPGA += $(patsubst %.c, $(OBJ_DIR)/fpga/%.o, $(SRCS_APPS_C))
+OBJS_FPGA += $(patsubst %.c, $(OBJ_DIR)/fpga/%.o, $(SRCS_BIN_C))
 OBJS_FPGA += $(patsubst %.c, $(OBJ_DIR)/fpga/%.o, $(DRIVERS_FPGA))
 
 # ====================================================================
