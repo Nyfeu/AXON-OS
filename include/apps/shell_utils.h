@@ -24,6 +24,12 @@
 // Mutex para uso da UART (definido em apps.c)
 extern mutex_t uart_mutex;
 
+// Modo editor global
+extern volatile int g_editor_mode;
+
+// Limpar a tela
+void clear_screen(void);
+
 // safe_puts: Função thread-safe para escrever na UART
 static inline void safe_puts(const char* s) {
     while (sys_mutex_lock(&uart_mutex) == 0) sys_yield(); 
@@ -62,5 +68,8 @@ static inline int sys_strcmp(const char *s1, const char *s2) {
     }
     return *(const unsigned char *)s1 - *(const unsigned char *)s2;
 }
+
+// Lê um caractere do teclado (bloqueante)
+char shell_getc(void);
 
 #endif

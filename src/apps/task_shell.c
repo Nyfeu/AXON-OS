@@ -26,6 +26,9 @@ extern mutex_t uart_mutex;
 // Buffer do teclado (definido em apps.c)
 extern cbuf_t rx_buffer;
 
+// Modo editor global
+volatile int g_editor_mode = 0;
+
 // ======================================================================================
 // ISR (Interrupt Service Routine) 
 // ======================================================================================
@@ -66,6 +69,18 @@ void clear_screen(void) {
     safe_puts(SH_GRAY "   Type 'help' for commands.\n\n" SH_RESET);
 }
 
+char shell_getc(void) {
+    uint8_t c;
+    while (1) {
+        // Tenta pegar um char do buffer circular
+        if (cbuf_pop(&rx_buffer, &c)) {
+            return (char)c;
+        }
+        // Se vazio, cede a CPU para não travar o sistema
+        sys_sleep(20);
+    }
+}
+
 // ======================================================================================
 // TABELA DE COMANDOS (Command Registry)
 // ======================================================================================
@@ -89,7 +104,13 @@ static const shell_cmd_t shell_commands[] = {
     {"stop",    cmd_stop},  
     {"resume",  cmd_resume},
     {"free",    cmd_free},
-    {"defrag",  cmd_defrag}
+    {"defrag",  cmd_defrag},
+    {"ls",      cmd_ls},
+    {"touch",   cmd_touch},
+    {"rm",      cmd_rm},
+    {"cat",     cmd_cat},
+    {"write",   cmd_write_file},
+    {"edit",    cmd_edit}
 };
 
 #define CMD_COUNT (sizeof(shell_commands) / sizeof(shell_cmd_t))
@@ -114,8 +135,7 @@ void task_shell(void) {
             // --- CTRL+L (Form Feed) ---
             if (c == 12) { 
                 
-                safe_puts("\033[2J\033[H\033[3;0H");
-                safe_puts(SH_CYAN SH_BOLD "   AXON RTOS " SH_RESET SH_GRAY " v0.1.0-alpha\n\n" SH_RESET);
+                clear_screen();
                 show_prompt();
                 
                 if (cmd_idx > 0) {

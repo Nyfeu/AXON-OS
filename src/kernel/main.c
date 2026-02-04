@@ -20,6 +20,7 @@
 #include "../../include/kernel/mutex.h"
 #include "../../include/apps/apps.h"
 #include "../../include/kernel/mm.h"
+#include "../../include/kernel/fs.h"
 
 // ======================================================================================
 //  PROTÓTIPOS DE FUNÇÕES
@@ -42,6 +43,9 @@ extern void trap_entry();
 // Símbolos do Linker
 extern void _start(void);
 extern void _end(void);
+
+// Tamanho da HEAP (128 KB)
+#define HEAP_SIZE 128  
 
 // Task atual rodando
 extern task_t *current_task;
@@ -254,6 +258,43 @@ void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
                     extern void kheap_defrag(void);
                     kheap_defrag(); 
                     break;
+
+                case SYS_FS_CREATE:
+                    // a0: nome
+                    extern int fs_create(const char *name);
+                    ctx[9] = fs_create((const char*)arg0);
+                    break;
+
+                case SYS_FS_WRITE:
+                    // a0: nome, a1: dados, a2: len
+                    extern int fs_write(const char *name, const uint8_t *data, uint32_t len);
+                    // arg0 já temos. Precisamos de a1 (ctx[10]) e a2 (ctx[11])
+                    ctx[9] = fs_write((const char*)arg0, (const uint8_t*)ctx[10], (uint32_t)ctx[11]);
+                    break;
+
+                case SYS_FS_READ:
+                    // a0: nome, a1: buffer, a2: max_len
+                    extern int fs_read(const char *name, uint8_t *buffer, uint32_t max_len);
+                    ctx[9] = fs_read((const char*)arg0, (uint8_t*)ctx[10], (uint32_t)ctx[11]);
+                    break;
+
+                case SYS_FS_LIST:
+                    // a0: buffer, a1: max_len
+                    extern int fs_list(char *buffer, uint32_t max_len);
+                    ctx[9] = fs_list((char*)arg0, (uint32_t)ctx[10]);
+                    break;
+
+                case SYS_FS_DELETE:
+                    // a0: nome
+                    extern int fs_delete(const char *name);
+                    ctx[9] = fs_delete((const char*)arg0);
+                    break;
+
+                case SYS_FS_FORMAT:
+                    extern void fs_format(void);
+                    fs_format();
+                    ctx[9] = 0; // Retorna 0 (sucesso)
+                    break;
                     
                 default:
                     hal_uart_puts("[KERNEL] Syscall desconhecida.\n\r");
@@ -338,7 +379,7 @@ void kernel_main() {
     // Inicialização da HEAP
 
     // Definição do tamanho da RAM Total 
-    uint32_t ram_total = 64 * 1024;
+    uint32_t ram_total = HEAP_SIZE * 1024;
 
     // O Heap começa no fim do Kernel (_end)
     // Reservamos 4KB (4096) no final da RAM para a Pilha de Boot (Stack de segurança)
@@ -353,6 +394,13 @@ void kernel_main() {
     print_dec(free_ram); 
     hal_uart_puts(" bytes.\n\r" ANSI_RESET);
     hal_uart_putc('\n');
+
+    // Inicialização do Sistema de Arquivos
+
+    kmalloc_init((void*)_end, heap_size);
+
+    log_info("Initializing RamFS...");
+    fs_init();
 
     // ----------------------------------------------------------------------------------
     // FASE 2: Configuração de Interrupções

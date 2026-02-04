@@ -21,4 +21,12 @@ void cmd_alloc(const char *args);
 void cmd_free(const char *args);
 void cmd_defrag(const char *args);
 
+// Sistema de arquivos
+void cmd_ls(const char *args);
+void cmd_touch(const char *args);
+void cmd_rm(const char *args);
+void cmd_cat(const char *args);
+void cmd_write_file(const char *args);
+void cmd_edit(const char *args);
+
 #endif

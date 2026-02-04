@@ -25,6 +25,12 @@
 #define SYS_DEFRAG      12  // Desfragmentar o heap
 #define SYS_SUSPEND     13  // Pausar processo
 #define SYS_RESUME      14  // Retomar processo
+#define SYS_FS_CREATE   15  // Criar arquivo no sistema de arquivos
+#define SYS_FS_WRITE    16  // Escrever arquivo no sistema de arquivos
+#define SYS_FS_READ     17  // Ler arquivo do sistema de arquivos
+#define SYS_FS_LIST     18  // Listar arquivos no sistema de arquivos
+#define SYS_FS_DELETE   19  // Deletar arquivo do sistema de arquivos
+#define SYS_FS_FORMAT   20  // Formatar sistema de arquivos
 
 // ==========================================================================================================
 // Informações do Processo
