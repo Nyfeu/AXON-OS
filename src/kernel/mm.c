@@ -119,24 +119,28 @@ void kheap_dump(void) {
     hal_uart_puts("\n  HEAP MAP (Start: ");
     debug_hex((uint32_t)heap_start); 
     hal_uart_puts(")\n");
-    hal_uart_puts("  --------------------------------------\n");
-    hal_uart_puts("  ADDR        SIZE        STATUS\n");
-    hal_uart_puts("  --------------------------------------\n");
+    
+    hal_uart_puts("  ---------------------------------------------------\n");
+    hal_uart_puts("  HEAD ADDR   DATA ADDR   SIZE        STATUS\n");
+    hal_uart_puts("  ---------------------------------------------------\n");
 
     block_t *curr = free_list;
 
     while (curr) {
         hal_uart_puts("  ");
-        debug_hex((uint32_t)curr); 
+        debug_hex((uint32_t)curr);               // Onde o Kernel gerencia (Metadata)
         
-        hal_uart_puts("    ");
-        debug_hex(curr->size);     
+        hal_uart_puts("  ");
+        debug_hex((uint32_t)curr + BLOCK_SIZE);  // Onde o usuário escreve (User Pointer)
+        
+        hal_uart_puts("  ");
+        debug_hex(curr->size);                   // Tamanho útil
         
         hal_uart_puts(curr->free ? "    FREE\n" : "    USED\n"); 
         curr = curr->next;
     }
 
-    hal_uart_puts("  --------------------------------------\n");
+    hal_uart_puts("  ---------------------------------------------------\n");
     hal_uart_puts("  Total Free: ");
     debug_hex(kget_free_memory()); 
     hal_uart_puts("\n\n");
