@@ -33,7 +33,7 @@ void cmd_alloc(const char *args) {
     if(ptr) {
         safe_puts("Allocated at: ");
         char buf[12]; val_to_hex((uint32_t)ptr, buf); safe_puts(buf);
-        safe_puts("\nUse 'poke <addr> <val>' to write safely.\n");
+        safe_puts("\nUse 'poke <addr> <val>' to write safely.\n\n");
     } else {
         safe_puts("Allocation failed (OOM).\n");
     }

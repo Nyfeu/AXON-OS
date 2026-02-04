@@ -235,9 +235,9 @@ void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
                     break;
 
                 case SYS_FREE:
-                    extern void kfree(void* ptr);
+                    extern uint8_t kfree(void* ptr);
                     // O endereço a ser liberado vem em a0
-                    kfree((void*)frame->a0);
+                    ctx[9] = kfree((void*)frame->a0);
                     break;
 
                 case SYS_SUSPEND:
@@ -248,6 +248,11 @@ void trap_handler(unsigned int mcause, unsigned int mepc, uint32_t *ctx) {
                 case SYS_RESUME:
                     extern int scheduler_resume(uint32_t pid);
                     frame->a0 = scheduler_resume(frame->a0);
+                    break;
+
+                case SYS_DEFRAG:
+                    extern void kheap_defrag(void);
+                    kheap_defrag(); 
                     break;
                     
                 default:

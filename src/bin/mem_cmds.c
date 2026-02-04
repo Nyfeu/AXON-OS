@@ -93,13 +93,20 @@ void cmd_free(const char *args) {
     uint32_t addr = strtoul_hex(args);
     
     // Chama o Kernel
-    sys_free((void*)addr);
+    uint8_t res = sys_free((void*)addr);
     
-    safe_puts("Freed block at 0x");
-    
-    // Feedback visual (opcional)
-    char buf[12]; 
-    val_to_hex(addr, buf); 
-    safe_puts(buf);
-    safe_puts("\n");
+    if (res == 0) {
+        safe_puts("Freed block at 0x");
+        char buf[12]; val_to_hex(addr, buf); safe_puts(buf);
+        safe_puts("\n");
+    } else {
+        safe_puts(SH_RED "Failed to free block.\n" SH_RESET);
+    }
+
+}
+
+void cmd_defrag(const char *args) {
+    (void)args; // Ignora argumentos
+    sys_defrag(); // Chama a syscall
+    safe_puts("Heap defragmentation requested.\n");
 }

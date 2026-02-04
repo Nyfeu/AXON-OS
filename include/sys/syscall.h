@@ -22,8 +22,9 @@
 #define SYS_HEAP_INFO   9   // Dump do Heap
 #define SYS_MALLOC      10  // Para alocar memória segura
 #define SYS_FREE        11  // Para liberar
-#define SYS_SUSPEND     12  // Pausar processo
-#define SYS_RESUME      13  // Retomar processo
+#define SYS_DEFRAG      12  // Desfragmentar o heap
+#define SYS_SUSPEND     13  // Pausar processo
+#define SYS_RESUME      14  // Retomar processo
 
 // ==========================================================================================================
 // Informações do Processo
@@ -258,13 +259,27 @@ static inline void* sys_malloc(uint32_t size) {
 
 
 // Libera memória alocada no Heap do Kernel
-static inline void sys_free(void* ptr) {
+static inline uint8_t sys_free(void* ptr) {
+    int res;
     asm volatile (
-        "mv a0, %0\n"       // Coloca o endereço em a0
-        "li a7, %1\n"       // ID SYS_FREE em a7
-        "ecall"
+        "mv a0, %1\n"       // Move o ponteiro para a0 (Argumento)
+        "li a7, %2\n"       // Carrega o ID da Syscall em a7
+        "ecall\n"           // Chama o Kernel
+        "mv %0, a0\n"       // <--- CAPTURA: Move o retorno de a0 para a variável 'res'
+        : "=r"(res)         // Saída: 'res' está associado a %0
+        : "r"(ptr), "i"(SYS_FREE) // Entradas: %1 e %2
+        : "a0", "a7", "memory"    // Clobbers
+    );
+    return res;
+}
+
+// Desfragmenta o heap do Kernel
+static inline void sys_defrag(void) {
+    asm volatile (
+        "li a7, %0\n"       // Carrega ID SYS_DEFRAG (40) em a7
+        "ecall"             // Chama o Kernel
         : 
-        : "r"(ptr), "i"(SYS_FREE) 
+        : "i"(SYS_DEFRAG) 
         : "a0", "a7", "memory"
     );
 }

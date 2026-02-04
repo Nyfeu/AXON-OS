@@ -25,10 +25,11 @@ void cmd_help(const char *args) {
     // Memória
     safe_puts("  " SH_CYAN "heap      " SH_RESET " Show heap usage\n");
     safe_puts("  " SH_CYAN "alloc     " SH_RESET " Safe alloc (alloc <bytes>)\n");
+    safe_puts("  " SH_CYAN "free      " SH_RESET " Free memory (free <addr>)\n");
+    safe_puts("  " SH_CYAN "defrag    " SH_RESET " Defrag heap (merge free blocks)\n");
     safe_puts("  " SH_CYAN "peek      " SH_RESET " Read memory (peek <addr>)\n");
     safe_puts("  " SH_CYAN "poke      " SH_RESET " Write memory (poke <addr> <val>)\n");
     safe_puts("  " SH_CYAN "memtest   " SH_RESET " Simple malloc test\n");
-    safe_puts("  " SH_CYAN "free      " SH_RESET " Free memory (free <addr>)\n");
 
     safe_puts("\n");
 

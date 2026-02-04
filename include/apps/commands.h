@@ -19,5 +19,6 @@ void cmd_peek(const char *args);
 void cmd_poke(const char *args);
 void cmd_alloc(const char *args);
 void cmd_free(const char *args);
+void cmd_defrag(const char *args);
 
 #endif

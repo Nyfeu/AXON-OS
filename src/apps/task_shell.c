@@ -88,7 +88,8 @@ static const shell_cmd_t shell_commands[] = {
     {"alloc",   cmd_alloc}, 
     {"stop",    cmd_stop},  
     {"resume",  cmd_resume},
-    {"free",    cmd_free}
+    {"free",    cmd_free},
+    {"defrag",  cmd_defrag}
 };
 
 #define CMD_COUNT (sizeof(shell_commands) / sizeof(shell_cmd_t))
