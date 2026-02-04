@@ -180,7 +180,7 @@ static void nano_redraw(const char *filename, const char *status_msg) {
     
     if (status_msg) safe_puts(status_msg);
 
-    safe_puts("\n" SH_GRAY " [Ctrl+W] Save   [Ctrl+Q] Quit\n" SH_RESET); 
+    safe_puts("\n" SH_GRAY " [Ctrl+W] Save   [Ctrl+X] Quit\n" SH_RESET); 
     safe_puts("------------------------------------------------\r\n");
     
     // 3. Conteúdo (com correção visual de quebra de linha)
@@ -203,8 +203,8 @@ void cmd_edit(const char *args) {
     while (1) {
         char c = shell_getc(); 
 
-        // --- SAIR: Ctrl+Q ---
-        if (c == 17) break; 
+        // --- SAIR: Ctrl+X ---
+        if (c == 24) break; 
         
         // --- SALVAR: Ctrl+W ---
         else if (c == 23) {
